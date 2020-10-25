@@ -51,8 +51,8 @@ describe('Notification interface', () => {
 
     expect(mockSendFn.mock.calls.length).toBe(1)
     expect(mockSendFn.mock.calls[0][0]).toEqual({
-      from: `Staticman <${config.get('email.fromAddress')}>`,
-      'h:Reply-To': `Staticman <${config.get('email.fromAddress')}>`,
+      from: `${config.get('email.fromName')} <${config.get('email.fromAddress')}>`,
+      'h:Reply-To': `${config.get('email.fromName')} <${config.get('email.fromAddress')}>`,
       to: recipient,
       subject: `New reply on "${mockData.data.siteName}"`,
       html: message
