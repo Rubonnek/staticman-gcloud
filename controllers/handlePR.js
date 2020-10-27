@@ -91,7 +91,7 @@ module.exports = async (repo, data) => {
 
         staticman.setConfigPath(parsedBody.configPath)
 
-        await staticman.processMerge(parsedBody.fields, parsedBody.options)
+        await staticman.processMerge(parsedBody.fields, parsedBody.extendedFields, parsedBody.options)
         if (ua) {
           ua.event('Hooks', 'Create/notify mailing list').send()
         }

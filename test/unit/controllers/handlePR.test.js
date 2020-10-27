@@ -273,8 +273,6 @@ describe('HandlePR controller', () => {
       } catch (e) {
         expect(e).toBe(errorMessage)
         assertGetReviewCalls(service, mockGetReviewGitHub, mockGetReviewGitLab)
-        // expect(mockSetConfigPathFn.mock.calls.length).toBe(1)
-        // expect(mockProcessMergeFn.mock.calls.length).toBe(1)
         expect(mockSetConfigPathFn).toHaveBeenCalledTimes(1)
         expect(mockProcessMergeFn).toHaveBeenCalledTimes(1)
       }
@@ -327,6 +325,12 @@ describe('HandlePR controller', () => {
       }
       expect(mockSetConfigPathFn.mock.calls.length).toBe(1)
       expect(mockProcessMergeFn.mock.calls.length).toBe(1)
+
+      // Compare to values contained in sampleData.prBody1.
+      expect(mockProcessMergeFn.mock.calls[0][0].email).toBe('017dab421e1e1cf6257bcadc0d289c62')
+      expect(mockProcessMergeFn.mock.calls[0][1]._id).toBe('bdb0c5d0-170b-11eb-94bf-652c3172a267')
+      expect(mockProcessMergeFn.mock.calls[0][2].origin).toBe(
+        'https://eduardoboucas.com/blog/2015/05/11/rethinking-the-commenting-system-for-my-jekyll-site.html')
     })
   })
 })

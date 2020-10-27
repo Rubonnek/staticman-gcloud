@@ -1,0 +1,6 @@
+{# 
+    This template may be modified to customize the content of the subject line used in emails 
+    sent to notify subscribers when new comments are added. Uses the Nunjucks templating language. 
+    More info - https://mozilla.github.io/nunjucks/ 
+#}
+{% if data.siteName %}New reply on {{ data.siteName }}{% else %}New reply{% endif %}
