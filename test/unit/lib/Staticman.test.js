@@ -1378,6 +1378,9 @@ describe('Staticman interface', () => {
         return Promise.reject(errorHandler('IS_SPAM'))
       })
 
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
       return staticman.processEntry(
         mockHelpers.getFields(),
         {}
@@ -1385,6 +1388,9 @@ describe('Staticman interface', () => {
         expect(err).toEqual({
           _smErrorCode: 'IS_SPAM'
         })
+
+        // Restore console.error
+        consoleSpy.mockRestore();
       })
     })
 
@@ -1400,6 +1406,9 @@ describe('Staticman interface', () => {
       staticman._checkForSpam = () => Promise.resolve(fields)
       staticman.siteConfig = mockConfig
 
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
       return staticman.processEntry(
         mockHelpers.getFields(),
         {}
@@ -1408,6 +1417,9 @@ describe('Staticman interface', () => {
           _smErrorCode: 'INVALID_FIELDS',
           data: ['someField1']
         })
+
+        // Restore console.error
+        consoleSpy.mockRestore();
       })
     })
 
@@ -1431,6 +1443,9 @@ describe('Staticman interface', () => {
           return Promise.reject(errorHandler('INVALID_FORMAT'))
         })
 
+        // Suppress any calls to console.error - to keep test output clean.
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
         return staticman.processEntry(
           mockHelpers.getFields(),
           {}
@@ -1441,6 +1456,9 @@ describe('Staticman interface', () => {
           expect(err).toEqual({
             _smErrorCode: 'INVALID_FORMAT'
           })
+
+          // Restore console.error
+          consoleSpy.mockRestore();
         })
       }
     )

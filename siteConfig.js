@@ -141,6 +141,11 @@ const schema = {
       format: Boolean,
       default: false
     },
+    doubleOptIn: {
+      doc: 'Whether commenters are required to confirm their subscription request via a confirmation email. A [Mailgun](http://mailgun.com) account is required.',
+      format: Boolean,
+      default: false
+    },
     apiKey: {
       doc: 'Mailgun API key',
       format: 'EncryptedString',

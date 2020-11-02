@@ -5,6 +5,7 @@ const config = require(path.join(__dirname, '/../config'))
 const errorHandler = require('../lib/ErrorHandler')
 const reCaptcha = require('express-recaptcha')
 const Staticman = require('../lib/Staticman')
+const sendResponse = require('./sendResponse')
 const universalAnalytics = require('universal-analytics')
 
 function checkRecaptcha (staticman, req) {
@@ -69,57 +70,12 @@ function process (staticman, req, res) {
   const options = req.query.options || req.body.options || {}
 
   return staticman.processEntry(fields, options).then(data => {
-    sendResponse(res, {
-      redirect: data.redirect,
-      fields: data.fields
-    })
+    sendResponse(res, data)
 
     if (ua) {
       ua.event('Entries', 'New entry').send()
     }
   })
-}
-
-function sendResponse (res, data) {
-  const error = data && data.err
-  const statusCode = error ? 500 : 200
-
-  if (!error && data.redirect) {
-    return res.redirect(data.redirect)
-  }
-
-  if (error && data.redirectError) {
-    return res.redirect(data.redirectError)
-  }
-
-  let payload = {
-    success: !error
-  }
-
-  if (error && error._smErrorCode) {
-    const errorCode = errorHandler.getInstance().getErrorCode(error._smErrorCode)
-    const errorMessage = errorHandler.getInstance().getMessage(error._smErrorCode)
-
-    if (errorMessage) {
-      payload.message = errorMessage
-    }
-
-    if (error.data) {
-      payload.data = error.data
-    }
-
-    if (error) {
-      payload.rawError = error
-    }
-
-    payload.errorCode = errorCode
-  } else if (error) {
-    payload.rawError = data.err.toString()
-  } else {
-    payload.fields = data.fields
-  }
-
-  res.status(statusCode).send(payload)
 }
 
 module.exports = async (req, res, next) => {
@@ -141,4 +97,3 @@ module.exports = async (req, res, next) => {
 module.exports.checkRecaptcha = checkRecaptcha
 module.exports.createConfigObject = createConfigObject
 module.exports.process = process
-module.exports.sendResponse = sendResponse

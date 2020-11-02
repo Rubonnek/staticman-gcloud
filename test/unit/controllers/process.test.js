@@ -1,3 +1,5 @@
+const { URL, URLSearchParams } = require('url')
+
 const config = require('./../../../config')
 const errorHandler = require('./../../../lib/ErrorHandler').getInstance()
 const githubToken = config.get('githubToken')
@@ -309,7 +311,7 @@ describe('Process controller', () => {
     const processFn = require('./../../../controllers/process').process
 
     test('send a redirect to the URL provided, if the `redirect` option is provided, if `processEntry` succeeds', () => {
-      const redirectUrl = 'https://eduardoboucas.com'
+      const redirectUrl = new URL('https://eduardoboucas.com').toString()
       const mockProcessEntry = jest.fn((fields, options) => Promise.resolve({
         fields: ['name', 'email'],
         redirect: redirectUrl
@@ -428,11 +430,11 @@ describe('Process controller', () => {
   })
 
   describe('sendResponse', () => {
-    const sendResponse = require('./../../../controllers/process').sendResponse
+    const sendResponse = require('./../../../controllers/sendResponse')
 
     test('redirects if there is a `redirect` option and no errors', () => {
       const data = {
-        redirect: 'https://eduardoboucas.com'
+        redirect: new URL('https://eduardoboucas.com').toString()
       }
 
       const res = mockHelpers.getMockResponse()
