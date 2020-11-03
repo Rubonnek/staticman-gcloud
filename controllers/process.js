@@ -48,20 +48,6 @@ function checkRecaptcha (staticman, req) {
   })
 }
 
-function createConfigObject (apiVersion, property) {
-  let remoteConfig = {}
-
-  if (apiVersion === '1') {
-    remoteConfig.file = '_config.yml'
-    remoteConfig.path = 'staticman'
-  } else {
-    remoteConfig.file = 'staticman.yml'
-    remoteConfig.path = property || ''
-  }
-
-  return remoteConfig
-}
-
 function process (staticman, req, res) {
   const ua = config.get('analytics.uaTrackingId')
     ? universalAnalytics(config.get('analytics.uaTrackingId'))
@@ -95,5 +81,4 @@ module.exports = async (req, res, next) => {
 }
 
 module.exports.checkRecaptcha = checkRecaptcha
-module.exports.createConfigObject = createConfigObject
 module.exports.process = process

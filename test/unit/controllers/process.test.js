@@ -269,44 +269,6 @@ describe('Process controller', () => {
     })
   })
 
-  describe('createConfigObject', () => {
-    const createConfigObject = require('./../../../controllers/process').createConfigObject
-
-    test('creates a config object for version 1 of API', () => {
-      const configv1 = {
-        file: '_config.yml',
-        path: 'staticman'
-      }
-
-      const config1 = createConfigObject('1')
-      const config2 = createConfigObject('1', 'someProperty')
-
-      expect(config1).toEqual(configv1)
-      expect(config2).toEqual(configv1)
-    })
-
-    test('creates a config object for version 2+ of API', () => {
-      const configv2File = 'staticman.yml'
-
-      const config3 = createConfigObject('2')
-      const config4 = createConfigObject('2', 'someProperty')
-      const config5 = createConfigObject()
-
-      expect(config3).toEqual({
-        file: configv2File,
-        path: ''
-      })
-      expect(config4).toEqual({
-        file: configv2File,
-        path: 'someProperty'
-      })
-      expect(config5).toEqual({
-        file: configv2File,
-        path: ''
-      })
-    })
-  })
-
   describe('process', () => {
     const processFn = require('./../../../controllers/process').process
 
