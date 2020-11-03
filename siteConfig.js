@@ -141,10 +141,10 @@ const schema = {
       format: Boolean,
       default: false
     },
-    doubleOptIn: {
-      doc: 'Whether commenters are required to confirm their subscription request via a confirmation email. A [Mailgun](http://mailgun.com) account is required.',
-      format: Boolean,
-      default: false
+    consentModel: {
+      doc: 'The consent/confirm model to enforce for notifications. If "none", users are subscribed to notifications immediately, with no consent data recorded. If "single", users are subscribed to notifications immediately, with consent data recorded. If "double", users are subscribed to notifications only after confirming via an email click-through, with consent and confirm data recorded.',
+      format: ['none', 'single', 'double'],
+      default: 'none'
     },
     apiKey: {
       doc: 'Mailgun API key',

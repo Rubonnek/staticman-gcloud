@@ -54,6 +54,8 @@ beforeEach(() => {
 	  parent: 'an-awesome-post-about-staticman',
     origin: 'http://blog.example.com'
   }
+
+  siteConfig = mockHelpers.getConfig()
 })
 
 afterEach(() => {
@@ -76,7 +78,7 @@ describe('SubscriptionsManager', () => {
       mockListsMembersCreateFunc.mockImplementation( (createData, callback) => callback(null, 'success'))
 
       expect.hasAssertions()
-      await subscriptionsMgr.set(options, emailAddr).then(response => {
+      await subscriptionsMgr.set(options, emailAddr, siteConfig).then(response => {
         expect(mockMailAgent.lists).toHaveBeenCalledTimes(3)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
         expect(mockListsCreateFunc).toHaveBeenCalledTimes(1)
@@ -101,7 +103,7 @@ describe('SubscriptionsManager', () => {
       options.parentName = 'Post an-awesome-post-about-staticman'
 
       expect.hasAssertions()
-      await subscriptionsMgr.set(options, emailAddr).then(response => {
+      await subscriptionsMgr.set(options, emailAddr, siteConfig).then(response => {
         expect(mockMailAgent.lists).toHaveBeenCalledTimes(3)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
         expect(mockListsCreateFunc).toHaveBeenCalledTimes(1)
@@ -126,7 +128,7 @@ describe('SubscriptionsManager', () => {
       mockListsMembersCreateFunc.mockImplementation( (createData, callback) => callback(null, 'success'))
 
       expect.hasAssertions()
-      await subscriptionsMgr.set(options, emailAddr).then(response => {
+      await subscriptionsMgr.set(options, emailAddr, siteConfig).then(response => {
         expect(mockMailAgent.lists).toHaveBeenCalledTimes(2)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
         // Assert that list not created.
@@ -145,7 +147,7 @@ describe('SubscriptionsManager', () => {
         callback({statusCode: 500, message: 'list lookup failure'}, null) )
 
       expect.hasAssertions()
-      await subscriptionsMgr.set(options, emailAddr).catch(error => {
+      await subscriptionsMgr.set(options, emailAddr, siteConfig).catch(error => {
         expect(error.message).toBe('list lookup failure')
         expect(mockMailAgent.lists).toHaveBeenCalledTimes(1)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
@@ -163,7 +165,7 @@ describe('SubscriptionsManager', () => {
         callback({statusCode: 500, message: 'list create failure'}, null) )
 
       expect.hasAssertions()
-      await subscriptionsMgr.set(options, emailAddr).catch(error => {
+      await subscriptionsMgr.set(options, emailAddr, siteConfig).catch(error => {
         expect(error.message).toBe('list create failure')
         expect(mockMailAgent.lists).toHaveBeenCalledTimes(2)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
@@ -182,7 +184,7 @@ describe('SubscriptionsManager', () => {
         callback({statusCode: 500, message: 'member create failure'}, null) )
 
       expect.hasAssertions()
-      await subscriptionsMgr.set(options, emailAddr).catch(error => {
+      await subscriptionsMgr.set(options, emailAddr, siteConfig).catch(error => {
         expect(error.message).toBe('member create failure')
         expect(mockMailAgent.lists).toHaveBeenCalledTimes(3)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
@@ -219,8 +221,6 @@ describe('SubscriptionsManager', () => {
         _id: '70c33c00-17b3-11eb-b910-2f4fc1bf5873'
       }
       extendedFields = Object.assign({}, fields)
-
-      siteConfig = mockHelpers.getConfig()
     })
 
     test('sends notification email to mailing list', async () => {
