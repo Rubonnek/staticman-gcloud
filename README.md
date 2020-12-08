@@ -9,7 +9,7 @@ Staticwoman is a fork of [Staticman](https://github.com/eduardoboucas/staticman)
 - [Setting names and descriptions on generated mailing lists](https://github.com/hispanic/staticwoman/pull/2)
 - [Customizing the sender name on notification emails](https://github.com/hispanic/staticwoman/pull/3)
 - [Customizing the subject and content of notification emails](https://github.com/hispanic/staticwoman/pull/4)
-- [Double opt-in for notification emails and GDPR compliance](https://github.com/hispanic/staticwoman/pull/5)
+- [Double opt-in for notification emails and GDPR compliance](https://github.com/hispanic/staticwoman/pull/6)
 
 I expect that the original Staticman project will include some version of the above functionality sooner or later. Until then, here 'tis. I haven't made any effort to document this new functionality beyond the comments found in the above-referenced pull requests. If you have interest in making use of any of these features and you'd like to see said documentation created, please open an issue and I'll see what I can do. 
 
