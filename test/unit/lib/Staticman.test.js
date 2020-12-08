@@ -1518,10 +1518,11 @@ describe('Staticman interface', () => {
 
     test('subscribes the user to notifications if subscribe option supplied and no consent model', async () => {
       const mockSubscriptionSet = jest.fn(() => Promise.resolve(true))
+      const mockSubscriptionSend = jest.fn(() => Promise.resolve(true))
 
       jest.mock('./../../../lib/SubscriptionsManager', () => {
         return jest.fn(() => ({
-          send: jest.fn(),
+          send: mockSubscriptionSend,
           set: mockSubscriptionSet
         }))
       })
@@ -1840,7 +1841,7 @@ describe('Staticman interface', () => {
 
     describe('`processMerge()`', () => {
       test('sends notification emails', async () => {
-        const mockSubscriptionSend = jest.fn()
+        const mockSubscriptionSend = jest.fn(() => Promise.resolve(true))
 
         jest.mock('./../../../lib/SubscriptionsManager', () => {
           return jest.fn(() => ({
