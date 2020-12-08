@@ -133,6 +133,13 @@ const schema = {
     default: null,
     env: 'RSA_PRIVATE_KEY'
   },
+  cryptoPepper: {
+    doc: 'Shared (app-wide) secret that can be used to verify the authenticity of hashed/encrypted strings that we create. Should be long to defend against brute force attacks.',
+    docExample: 'bcacf76bef428bf6115abfaa664e73481657e5068b9534227dca6ec96c6931b113105be81cb177b4e22d42fbc32d04ea5a8133e97296de7852328',
+    format: String,
+    default: null,
+    env: 'CRYPTO_PEPPER'
+  },
   logging: {
     slackWebhook: {
       doc: 'Slack webhook URL to pipe log output to',

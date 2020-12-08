@@ -14,7 +14,8 @@ class StaticmanAPI {
       handlePR: require('./controllers/handlePR'),
       home: require('./controllers/home'),
       process: require('./controllers/process'),
-      webhook: require('./controllers/webhook')
+      webhook: require('./controllers/webhook'),
+      confirmSubscription: require('./controllers/confirmSubscription')
     }
 
     this.server = express()
@@ -103,6 +104,14 @@ class StaticmanAPI {
       this.requireApiVersion([3]),
       this.requireService(['gitlab']),
       this.controllers.webhook
+    )
+
+    this.server.get(
+      '/v:version/confirm/:service/:username/:repository/:branch/:property',
+      this.bruteforce.prevent,
+      this.requireApiVersion([3]),
+      this.requireService(['github', 'gitlab']),
+      this.controllers.confirmSubscription
     )
 
     // Route: root
