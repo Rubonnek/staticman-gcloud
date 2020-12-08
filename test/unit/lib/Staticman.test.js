@@ -1,6 +1,7 @@
 const config = require('./../../../config')
 const errorHandler = require('./../../../lib/ErrorHandler')
 const frontMatter = require('front-matter')
+const md5 = require('md5')
 const moment = require('moment')
 const mockHelpers = require('./../../helpers')
 const slugify = require('slug')
@@ -1377,6 +1378,9 @@ describe('Staticman interface', () => {
         return Promise.reject(errorHandler('IS_SPAM'))
       })
 
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       return staticman.processEntry(
         mockHelpers.getFields(),
         {}
@@ -1384,6 +1388,9 @@ describe('Staticman interface', () => {
         expect(err).toEqual({
           _smErrorCode: 'IS_SPAM'
         })
+
+        // Restore console.error
+        consoleSpy.mockRestore()
       })
     })
 
@@ -1399,6 +1406,9 @@ describe('Staticman interface', () => {
       staticman._checkForSpam = () => Promise.resolve(fields)
       staticman.siteConfig = mockConfig
 
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       return staticman.processEntry(
         mockHelpers.getFields(),
         {}
@@ -1407,6 +1417,9 @@ describe('Staticman interface', () => {
           _smErrorCode: 'INVALID_FIELDS',
           data: ['someField1']
         })
+
+        // Restore console.error
+        consoleSpy.mockRestore()
       })
     })
 
@@ -1430,6 +1443,9 @@ describe('Staticman interface', () => {
           return Promise.reject(errorHandler('INVALID_FORMAT'))
         })
 
+        // Suppress any calls to console.error - to keep test output clean.
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
         return staticman.processEntry(
           mockHelpers.getFields(),
           {}
@@ -1440,6 +1456,9 @@ describe('Staticman interface', () => {
           expect(err).toEqual({
             _smErrorCode: 'INVALID_FORMAT'
           })
+
+          // Restore console.error
+          consoleSpy.mockRestore()
         })
       }
     )
@@ -1497,12 +1516,13 @@ describe('Staticman interface', () => {
       })
     })
 
-    test('subscribes the user to notifications', async () => {
+    test('subscribes the user to notifications if subscribe option supplied and no consent model', async () => {
       const mockSubscriptionSet = jest.fn(() => Promise.resolve(true))
+      const mockSubscriptionSend = jest.fn(() => Promise.resolve(true))
 
       jest.mock('./../../../lib/SubscriptionsManager', () => {
         return jest.fn(() => ({
-          send: jest.fn(),
+          send: mockSubscriptionSend,
           set: mockSubscriptionSet
         }))
       })
@@ -1529,8 +1549,139 @@ describe('Staticman interface', () => {
         fields,
         options
       ).then(response => {
-        expect(mockSubscriptionSet.mock.calls[0][0]).toBe(options.parent)
+        expect(mockSubscriptionSet.mock.calls[0][0]).toEqual(options)
         expect(mockSubscriptionSet.mock.calls[0][1]).toBe(mockHelpers.getFields().email)
+        expect(response.secondaryErrors).toBeUndefined()
+      })
+    })
+
+    test('returns error if subscription fails when subscribe option supplied and no consent model', async () => {
+      const mockSubscriptionSet = jest.fn(() => Promise.reject( { message: 'mock error' } ))
+
+      jest.mock('./../../../lib/SubscriptionsManager', () => {
+        return jest.fn(() => ({
+          send: jest.fn(),
+          set: mockSubscriptionSet
+        }))
+      })
+
+      const Staticman = require('./../../../lib/Staticman')
+      const staticman = await new Staticman(mockParameters)
+      const fields = mockHelpers.getFields()
+      const options = {
+        parent: '1a2b3c4d5e6f',
+        subscribe: 'email'
+      }
+
+      mockConfig.set('allowedFields', Object.keys(fields))
+      mockConfig.set('moderation', false)
+      mockConfig.set('notifications.enabled', true)
+
+      staticman.siteConfig = mockConfig
+      staticman._checkForSpam = () => Promise.resolve(fields)
+      staticman.git.writeFile = jest.fn(() => {
+        return Promise.resolve()
+      })
+
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+      return staticman.processEntry(
+        fields,
+        options
+      ).then(response => {
+        expect(mockSubscriptionSet.mock.calls[0][0]).toEqual(options)
+        expect(mockSubscriptionSet.mock.calls[0][1]).toBe(mockHelpers.getFields().email)
+        expect(response.secondaryErrors.subscribeError).toEqual(true)
+        expect(response.secondaryErrors.subscribeConfirmError).toEqual(false)
+
+        // Restore console.error
+        consoleSpy.mockRestore()
+      })
+    })
+
+    test('sends confirmation for notifications if subscribe option supplied and double consent model', async () => {
+      const mockSendConfirmFn = jest.fn(() => Promise.resolve(true))
+
+      jest.mock('./../../../lib/SubscriptionsManager', () => {
+        return jest.fn(() => ({
+          send: jest.fn(),
+          sendConfirm: mockSendConfirmFn
+        }))
+      })
+
+      const Staticman = require('./../../../lib/Staticman')
+      const staticman = await new Staticman(mockParameters)
+      const fields = mockHelpers.getFields()
+      const options = {
+        parent: '1a2b3c4d5e6f',
+        subscribe: 'email'
+      }
+
+      mockConfig.set('allowedFields', Object.keys(fields))
+      mockConfig.set('moderation', false)
+      mockConfig.set('notifications.enabled', true)
+      mockConfig.set('notifications.consentModel', 'double')
+
+      staticman.siteConfig = mockConfig
+      staticman._checkForSpam = () => Promise.resolve(fields)
+      staticman.git.writeFile = jest.fn(() => {
+        return Promise.resolve()
+      })
+
+      return staticman.processEntry(
+        fields,
+        options
+      ).then(response => {
+        expect(mockSendConfirmFn.mock.calls[0][0]).toBe(mockHelpers.getFields().email)
+        expect(mockSendConfirmFn.mock.calls[0][1]).toEqual(fields)
+        expect(response.secondaryErrors).toBeUndefined()
+      })
+    })
+
+    test('returns error if confirmation send fails when subscribe option supplied and double consent model', async () => {
+      const mockSendConfirmFn = jest.fn(() => Promise.reject( { message: 'mock error' } ))
+
+      jest.mock('./../../../lib/SubscriptionsManager', () => {
+        return jest.fn(() => ({
+          send: jest.fn(),
+          sendConfirm: mockSendConfirmFn
+        }))
+      })
+
+      const Staticman = require('./../../../lib/Staticman')
+      const staticman = await new Staticman(mockParameters)
+      const fields = mockHelpers.getFields()
+      const options = {
+        parent: '1a2b3c4d5e6f',
+        subscribe: 'email'
+      }
+
+      mockConfig.set('allowedFields', Object.keys(fields))
+      mockConfig.set('moderation', false)
+      mockConfig.set('notifications.enabled', true)
+      mockConfig.set('notifications.consentModel', 'double')
+
+      staticman.siteConfig = mockConfig
+      staticman._checkForSpam = () => Promise.resolve(fields)
+      staticman.git.writeFile = jest.fn(() => {
+        return Promise.resolve()
+      })
+
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+      return staticman.processEntry(
+        fields,
+        options
+      ).then(response => {
+        expect(mockSendConfirmFn.mock.calls[0][0]).toBe(mockHelpers.getFields().email)
+        expect(mockSendConfirmFn.mock.calls[0][1]).toEqual(fields)
+        expect(response.secondaryErrors.subscribeError).toEqual(false)
+        expect(response.secondaryErrors.subscribeConfirmError).toEqual(true)
+
+        // Restore console.error
+        consoleSpy.mockRestore()
       })
     })
 
@@ -1575,6 +1726,62 @@ describe('Staticman interface', () => {
       })
     })
 
+    test('creates a pull request with a generated, metadata-enriched file if moderation and notifications are enabled', async () => {
+      const Staticman = require('./../../../lib/Staticman')
+      const staticman = await new Staticman(mockParameters)
+      const fields = mockHelpers.getFields()
+
+      /*
+       * Create extendedFields in a manner that mimmicks the logic in processEntry so that we can 
+       * get an exact match in the expect. Admittedly, a bit fragile.
+       */
+      let extendedFields = {
+        _id: staticman.uid
+      }
+      extendedFields = Object.assign(extendedFields, fields)
+      extendedFields.email = md5(extendedFields.email)
+      extendedFields.date = staticman._createDate({
+        format: mockConfig.get('generatedFields').date.options.format
+      })
+
+      mockConfig.set('allowedFields', Object.keys(fields))
+      mockConfig.set('moderation', true)
+      mockConfig.set('notifications.enabled', true)
+
+      staticman.siteConfig = mockConfig
+      staticman._checkForSpam = () => Promise.resolve(fields)
+      staticman.git.writeFileAndSendReview = jest.fn(() => {
+        return Promise.resolve()
+      })
+
+      return staticman.processEntry(
+        fields,
+        {}
+      ).then(response => {
+        return staticman._createFile(staticman._applyInternalFields(fields))
+      }).then(expectedFile => {
+        const expectedCommitMessage = staticman._resolvePlaceholders(
+          mockConfig.get('commitMessage'), {
+            fields,
+            options: {}
+          }
+        )
+
+        expect.hasAssertions()
+        expect(staticman.git.writeFileAndSendReview.mock.calls[0][0])
+          .toBe(staticman._getNewFilePath(fields))
+        expect(staticman.git.writeFileAndSendReview.mock.calls[0][1])
+          .toBe(expectedFile)
+        expect(staticman.git.writeFileAndSendReview.mock.calls[0][2])
+          .toBe(`staticman_${staticman.uid}`)
+        expect(staticman.git.writeFileAndSendReview.mock.calls[0][3])
+          .toBe(expectedCommitMessage)
+        // Fragile. Depends on the properties in extendedFields to be in the right order.
+        expect(staticman.git.writeFileAndSendReview.mock.calls[0][4])
+          .toBe(staticman._generateReviewBody(fields, extendedFields))
+      })
+    })
+
     test('commits the generated file directly if moderation is disabled', async () => {
       const mockSubscriptionSend = jest.fn()
 
@@ -1603,6 +1810,7 @@ describe('Staticman interface', () => {
         return Promise.resolve()
       })
 
+      expect.hasAssertions()
       return staticman.processEntry(
         fields,
         options
@@ -1618,6 +1826,8 @@ describe('Staticman interface', () => {
 
         expect(mockSubscriptionSend.mock.calls[0][0]).toBe(options.parent)
         expect(mockSubscriptionSend.mock.calls[0][1]).toEqual(fields)
+        // Don't try to match the whole generated extendedFields object, just the important bit.
+        expect(mockSubscriptionSend.mock.calls[0][2]._id).toEqual(staticman.uid)
         expect(staticman.git.writeFile.mock.calls[0][0])
           .toBe(staticman._getNewFilePath(fields))
         expect(staticman.git.writeFile.mock.calls[0][1])
@@ -1630,8 +1840,9 @@ describe('Staticman interface', () => {
     })
 
     describe('`processMerge()`', () => {
-      test('subscribes the user to notifications', async () => {
-        const mockSubscriptionSend = jest.fn()
+      test('returns error if subscription send fails', async () => {
+        const sendErrorMsg = 'send error msg'
+        const mockSubscriptionSend = jest.fn(() => Promise.reject(sendErrorMsg))
 
         jest.mock('./../../../lib/SubscriptionsManager', () => {
           return jest.fn(() => ({
@@ -1642,6 +1853,9 @@ describe('Staticman interface', () => {
         const Staticman = require('./../../../lib/Staticman')
         const staticman = await new Staticman(mockParameters)
         const fields = mockHelpers.getFields()
+        const extendedFields = {
+          _id: '70c33c00-17b3-11eb-b910-2f4fc1bf5873'
+        }
         const options = {
           parent: '1a2b3c4d5e6f',
           subscribe: 'email'
@@ -1651,16 +1865,82 @@ describe('Staticman interface', () => {
 
         staticman.siteConfig = mockConfig
 
+        expect.hasAssertions()
         return staticman.processMerge(
           fields,
+          extendedFields,
+          options
+        ).catch(error => {
+          expect(error).toEqual(sendErrorMsg)
+        })
+      })
+
+      test('sends notification emails', async () => {
+        const mockSubscriptionSend = jest.fn(() => Promise.resolve(true))
+
+        jest.mock('./../../../lib/SubscriptionsManager', () => {
+          return jest.fn(() => ({
+            send: mockSubscriptionSend
+          }))
+        })
+
+        const Staticman = require('./../../../lib/Staticman')
+        const staticman = await new Staticman(mockParameters)
+        const fields = mockHelpers.getFields()
+        const extendedFields = {
+          _id: '70c33c00-17b3-11eb-b910-2f4fc1bf5873'
+        }
+        const options = {
+          parent: '1a2b3c4d5e6f',
+          subscribe: 'email'
+        }
+
+        mockConfig.set('notifications.enabled', true)
+
+        staticman.siteConfig = mockConfig
+
+        expect.hasAssertions()
+        return staticman.processMerge(
+          fields,
+          extendedFields,
           options
         ).then(response => {
           expect(mockSubscriptionSend.mock.calls[0][0]).toBe(options.parent)
           expect(mockSubscriptionSend.mock.calls[0][1]).toEqual(fields)
-          expect(mockSubscriptionSend.mock.calls[0][2]).toEqual(options)
-          expect(mockSubscriptionSend.mock.calls[0][3]).toEqual(mockConfig)
+          expect(mockSubscriptionSend.mock.calls[0][2]).toEqual(extendedFields)
+          expect(mockSubscriptionSend.mock.calls[0][3]).toEqual(options)
+          expect(mockSubscriptionSend.mock.calls[0][4]).toEqual(mockConfig)
         })
       })
     })
+
+    describe('`createSubscription()`', () => {
+      test('subscribes a user to notification emails', async () => {
+        const mockSetFn = jest.fn()
+
+        jest.mock('./../../../lib/SubscriptionsManager', () => {
+          return jest.fn(() => ({
+            set: mockSetFn
+          }))
+        })
+
+        const Staticman = require('./../../../lib/Staticman')
+        const staticman = await new Staticman(mockParameters)
+
+        const data = {
+          subscriberEmailAddress: 'mock email address'
+        }
+
+        mockConfig.set('notifications.enabled', true)
+        staticman.siteConfig = mockConfig
+
+        expect.hasAssertions()
+        return staticman.createSubscription(data).then(response => {
+          expect(mockSetFn.mock.calls[0][0]).toBe(data)
+          expect(mockSetFn.mock.calls[0][1]).toEqual(data.subscriberEmailAddress)
+        })
+      })
+    })
+
   })
 })

@@ -1,0 +1,17 @@
+{#
+    This template may be modified to customize the content of emails sent to notify subscribers
+    when new comments are added. Uses the Nunjucks templating language. More info -
+    https://mozilla.github.io/nunjucks/
+#}
+<html>
+  <body>
+    Dear human,<br>
+    <br>
+    Someone replied to a comment you subscribed to{% if data.siteName %} on <strong>{{ data.siteName }}</strong>{% endif %}.<br>
+    <br>
+    {% if options.origin %}<a href="{{ options.origin }}">Click here</a> to see it. {% endif %}If you do not wish to receive any further notifications for this thread, <a href="%mailing_list_unsubscribe_url%">click here</a>.<br>
+    <br>
+    #ftw,<br>
+    -- <a href="https://staticman.net">Staticman</a>
+  </body>
+</html>

@@ -2,7 +2,6 @@ const bodyParser = require('body-parser')
 const config = require('./config')
 const express = require('express')
 const ExpressBrute = require('express-brute')
-const GithubWebHook = require('express-github-webhook')
 const objectPath = require('object-path')
 
 class StaticmanAPI {
@@ -11,9 +10,10 @@ class StaticmanAPI {
       connect: require('./controllers/connect'),
       encrypt: require('./controllers/encrypt'),
       auth: require('./controllers/auth'),
-      handlePR: require('./controllers/handlePR'),
       home: require('./controllers/home'),
-      process: require('./controllers/process')
+      process: require('./controllers/process'),
+      webhook: require('./controllers/webhook'),
+      confirmSubscription: require('./controllers/confirmSubscription')
     }
 
     this.server = express()
@@ -23,7 +23,6 @@ class StaticmanAPI {
       // type: '*'
     }))
 
-    this.initialiseWebhookHandler()
     this.initialiseCORS()
     this.initialiseBruteforceProtection()
     this.initialiseRoutes()
@@ -96,21 +95,35 @@ class StaticmanAPI {
       this.controllers.auth
     )
 
+    this.server.post(
+      /*
+       * Make the service, username, repository, etc. parameters optional in order to
+       * maintain backwards-compatibility with v1 of the endpoint, which assumed GitHub.
+       */
+      '/v:version/webhook/:service?/:username?/:repository?/:branch?/:property?',
+      this.bruteforce.prevent,
+      this.requireApiVersion([1, 3]),
+      /*
+       * Allow for the service to go unspecified in order to maintain backwards-compatibility
+       * with v1 of the endpoint, which assumed GitHub.
+       */
+      this.requireService(['', 'github', 'gitlab']),
+      this.controllers.webhook
+    )
+
+    this.server.get(
+      '/v:version/confirm/:service/:username/:repository/:branch/:property',
+      this.bruteforce.prevent,
+      this.requireApiVersion([3]),
+      this.requireService(['github', 'gitlab']),
+      this.controllers.confirmSubscription
+    )
+
     // Route: root
     this.server.get(
       '/',
       this.controllers.home
     )
-  }
-
-  initialiseWebhookHandler () {
-    const webhookHandler = GithubWebHook({
-      path: '/v1/webhook'
-    })
-
-    webhookHandler.on('pull_request', this.controllers.handlePR)
-
-    this.server.use(webhookHandler)
   }
 
   requireApiVersion (versions) {
@@ -132,7 +145,13 @@ class StaticmanAPI {
 
   requireService (services) {
     return (req, res, next) => {
-      const serviceMatch = services.some(service => service === req.params.service)
+      const serviceMatch = services.some(service => {
+        let requestedService = req.params.service
+        if (typeof requestedService === 'undefined') {
+          requestedService = ''
+        }
+        return service === requestedService
+      })
 
       if (!serviceMatch) {
         return res.status(400).send({

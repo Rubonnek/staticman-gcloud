@@ -42,10 +42,16 @@ const schema = {
       env: 'EMAIL_DOMAIN'
     },
     fromAddress: {
-      doc: 'Email address to send notifications from. Will be overridden by a `notifications.fromAddress` parameter in the site config, if one is set.',
+      doc: 'Email address to send notifications from.',
       format: String,
       default: 'noreply@staticman.net',
       env: 'EMAIL_FROM'
+    },
+    fromName: {
+      doc: 'Name of the sender to put on notification emails.',
+      format: String,
+      default: 'Staticman',
+      env: 'EMAIL_FROM_NAME'
     }
   },
   env: {
@@ -114,6 +120,13 @@ const schema = {
     format: String,
     default: null,
     env: 'RSA_PRIVATE_KEY'
+  },
+  cryptoPepper: {
+    doc: 'Shared (app-wide) secret that can be used to verify the authenticity of hashed/encrypted strings that we create. Should be long to defend against brute force attacks.',
+    docExample: 'bcacf76bef428bf6115abfaa664e73481657e5068b9534227dca6ec96c6931b113105be81cb177b4e22d42fbc32d04ea5a8133e97296de7852328',
+    format: String,
+    default: null,
+    env: 'CRYPTO_PEPPER'
   },
   logging: {
     slackWebhook: {

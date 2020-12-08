@@ -107,6 +107,11 @@ const schema = {
       default: false
     }
   },
+  githubWebhookSecret: {
+    doc: 'Token to verify that webhook requests are from GitHub',
+    format: 'EncryptedString',
+    default: null
+  },
   gitlabAuth: {
     clientId: {
       doc: 'The client ID to the GitLab Application used for GitLab OAuth.',
@@ -124,6 +129,11 @@ const schema = {
       default: ''
     }
   },
+  gitlabWebhookSecret: {
+    doc: 'Token to verify that webhook requests are from GitLab',
+    format: 'EncryptedString',
+    default: null
+  },
   moderation: {
     doc: 'When set to `true`, a pull request with the data files will be created to allow site administrators to approve or reject an entry. Otherwise, entries will be pushed to `branch` immediately.',
     format: Boolean,
@@ -140,6 +150,11 @@ const schema = {
       doc: 'Whether email notifications are enabled. This allows users to subscribe to future comments on a thread. A [Mailgun](http://mailgun.com) account is required.',
       format: Boolean,
       default: false
+    },
+    consentModel: {
+      doc: 'The consent/confirm model to enforce for notifications. If "none", users are subscribed to notifications immediately, with no consent data recorded. If "single", users are subscribed to notifications immediately, with consent data recorded. If "double", users are subscribed to notifications only after confirming via an email click-through, with consent and confirm data recorded.',
+      format: ['none', 'single', 'double'],
+      default: 'none'
     },
     apiKey: {
       doc: 'Mailgun API key',
