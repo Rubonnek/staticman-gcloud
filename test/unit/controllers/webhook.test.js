@@ -61,7 +61,7 @@ beforeEach(() => {
 
   mockCreateFn.mockImplementation((service, options) => {
     return {
-      getReview: mockGetReviewFn, 
+      getReview: mockGetReviewFn,
       deleteBranch: mockDeleteBranchFn
     }
   })
