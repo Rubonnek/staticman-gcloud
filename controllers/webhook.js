@@ -43,10 +43,12 @@ module.exports = async (req, res, next) => {
           if (webhookSecretExpected) {
             reqAuthenticated = false
             if (!webhookSecretSent) {
+              // This could be worth logging... unless the endpoint gets hammered with spam.
               errorsRaised.push('No secret found in the webhook request')
             } else if (_verifyGitHubSignature(webhookSecretExpected, JSON.stringify(req.body), webhookSecretSent)) {
               reqAuthenticated = true
             } else {
+              // This could be worth logging... unless the endpoint gets hammered with spam.
               errorsRaised.push('Unable to verify authenticity of request')
             }
           }
@@ -73,6 +75,7 @@ module.exports = async (req, res, next) => {
           if (webhookSecretExpected) {
             reqAuthenticated = false
             if (!webhookSecretSent) {
+              // This could be worth logging... unless the endpoint gets hammered with spam.
               errorsRaised.push('No secret found in the webhook request')
             } else if (webhookSecretExpected === webhookSecretSent) {
               /*
@@ -81,6 +84,7 @@ module.exports = async (req, res, next) => {
                */
               reqAuthenticated = true
             } else {
+              // This could be worth logging... unless the endpoint gets hammered with spam.
               errorsRaised.push('Unable to verify authenticity of request')
             }
           }
