@@ -8,7 +8,23 @@ const Staticman = require('../lib/Staticman')
 const sendResponse = require('./sendResponse')
 const universalAnalytics = require('universal-analytics')
 
-function checkRecaptcha (staticman, req) {
+module.exports = async (req, res, next) => {
+  const staticman = await new Staticman(req.params)
+
+  staticman.setConfigPath()
+  staticman.setIp(req.headers['x-forwarded-for'] || req.connection.remoteAddress)
+  staticman.setUserAgent(req.headers['user-agent'])
+
+  return _checkRecaptcha(staticman, req)
+    .then(usedRecaptcha => _process(staticman, req, res))
+    .catch(err => sendResponse(res, {
+      err,
+      redirect: req.body.options && req.body.options.redirect,
+      redirectError: req.body.options && req.body.options.redirectError
+    }))
+}
+
+const _checkRecaptcha = function (staticman, req) {
   return new Promise((resolve, reject) => {
     staticman.getSiteConfig().then(siteConfig => {
       if (!siteConfig.get('reCaptcha.enabled')) {
@@ -48,7 +64,7 @@ function checkRecaptcha (staticman, req) {
   })
 }
 
-function process (staticman, req, res) {
+const _process = function (staticman, req, res) {
   const ua = config.get('analytics.uaTrackingId')
     ? universalAnalytics(config.get('analytics.uaTrackingId'))
     : null
@@ -63,22 +79,3 @@ function process (staticman, req, res) {
     }
   })
 }
-
-module.exports = async (req, res, next) => {
-  const staticman = await new Staticman(req.params)
-
-  staticman.setConfigPath()
-  staticman.setIp(req.headers['x-forwarded-for'] || req.connection.remoteAddress)
-  staticman.setUserAgent(req.headers['user-agent'])
-
-  return checkRecaptcha(staticman, req)
-    .then(usedRecaptcha => process(staticman, req, res))
-    .catch(err => sendResponse(res, {
-      err,
-      redirect: req.body.options && req.body.options.redirect,
-      redirectError: req.body.options && req.body.options.redirectError
-    }))
-}
-
-module.exports.checkRecaptcha = checkRecaptcha
-module.exports.process = process

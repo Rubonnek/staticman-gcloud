@@ -4,9 +4,6 @@ const Notification = require('./../../../lib/Notification')
 
 const recipient = 'john.doe@example.com'
 
-let mockMailAgent
-let mockSendFunc = jest.fn()
-
 let mockSubject
 let mockContent
 let mockSubjectError
@@ -28,6 +25,9 @@ jest.mock('fs', () => {
     }
   }
 })
+
+let mockMailAgent
+let mockSendFunc = jest.fn()
 
 beforeEach(() => {
   mockMailAgent = {
@@ -90,7 +90,7 @@ describe('Notification interface', () => {
       })
     })
 
-    test('sends notification email with default subject and content', async () => {
+    test('sends notification email with default subject and content if error raised reading templates', async () => {
       const notification = new Notification(mockMailAgent)
       
       mockSendFunc.mockImplementation( (payload, callback) => callback(null, 'success') )
@@ -100,7 +100,7 @@ describe('Notification interface', () => {
       mockContentError = 'content readFile error'
 
       // Suppress any calls to console.error - to keep test output clean.
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 
       expect.hasAssertions()
       await notification.send(recipient, mockData.fields, mockData.extendedFields, mockData.options, mockData.data).then(response => {
@@ -117,7 +117,69 @@ describe('Notification interface', () => {
         expect(mockSendFunc.mock.calls[0][0]['h:Reply-To']).toBe(mockSendFunc.mock.calls[0][0].from)
 
         // Restore console.error
-        consoleSpy.mockRestore();
+        consoleSpy.mockRestore()
+      })
+    })
+
+    test('sends notification email with default subject and content if templates empty', async () => {
+      const notification = new Notification(mockMailAgent)
+      
+      mockSendFunc.mockImplementation( (payload, callback) => callback(null, 'success') )
+
+      // Force empty templates.
+      mockSubject = '    '
+      mockContent = ' '
+
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+      expect.hasAssertions()
+      await notification.send(recipient, mockData.fields, mockData.extendedFields, mockData.options, mockData.data).then(response => {
+        expect(mockSendFunc).toHaveBeenCalledTimes(1)
+        expect(mockSendFunc.mock.calls[0][0].from.includes(config.get('email.fromAddress'))).toBe(true)
+        expect(mockSendFunc.mock.calls[0][0].to).toBe(recipient)
+        // Expect that the default email subject will be used.
+        expect(mockSendFunc.mock.calls[0][0].subject).toBe('There is a new comment at ' + mockData.data.siteName)
+        // Expect that the default email content will be used.
+        expect(mockSendFunc.mock.calls[0][0].html.includes(
+          'There is a new comment at <a href="' + mockData.options.origin + '">' + mockData.options.origin + '</a>.')).toBe(true)
+        expect(mockSendFunc.mock.calls[0][0].html.includes(
+          'If you prefer, you may <a href="%mailing_list_unsubscribe_url%">unsubscribe</a> from future emails.')).toBe(true)
+        expect(mockSendFunc.mock.calls[0][0]['h:Reply-To']).toBe(mockSendFunc.mock.calls[0][0].from)
+
+        // Restore console.error
+        consoleSpy.mockRestore()
+      })
+    })
+
+    test('sends notification email with default subject and content if templates render to empty', async () => {
+      const notification = new Notification(mockMailAgent)
+      
+      mockSendFunc.mockImplementation( (payload, callback) => callback(null, 'success') )
+
+      // Force contents of rendered templates to be empty.
+      mockSubject = '  {{ options.foo }}     '
+      mockContent = ' {{ fields.bar }} {{ fields.baz }}'
+
+      // Suppress any calls to console.error - to keep test output clean.
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+      expect.hasAssertions()
+      await notification.send(recipient, mockData.fields, mockData.extendedFields, mockData.options, mockData.data).then(response => {
+        expect(mockSendFunc).toHaveBeenCalledTimes(1)
+        expect(mockSendFunc.mock.calls[0][0].from.includes(config.get('email.fromAddress'))).toBe(true)
+        expect(mockSendFunc.mock.calls[0][0].to).toBe(recipient)
+        // Expect that the default email subject will be used.
+        expect(mockSendFunc.mock.calls[0][0].subject).toBe('There is a new comment at ' + mockData.data.siteName)
+        // Expect that the default email content will be used.
+        expect(mockSendFunc.mock.calls[0][0].html.includes(
+          'There is a new comment at <a href="' + mockData.options.origin + '">' + mockData.options.origin + '</a>.')).toBe(true)
+        expect(mockSendFunc.mock.calls[0][0].html.includes(
+          'If you prefer, you may <a href="%mailing_list_unsubscribe_url%">unsubscribe</a> from future emails.')).toBe(true)
+        expect(mockSendFunc.mock.calls[0][0]['h:Reply-To']).toBe(mockSendFunc.mock.calls[0][0].from)
+
+        // Restore console.error
+        consoleSpy.mockRestore()
       })
     })
 
@@ -132,7 +194,7 @@ describe('Notification interface', () => {
       mockContent = 'Test content'
 
       // Suppress any calls to console.error - to keep test output clean.
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 
       expect.hasAssertions()
       await notification.send(recipient, mockData.fields, mockData.extendedFields, mockData.options, mockData.data).catch(error => {
@@ -146,7 +208,7 @@ describe('Notification interface', () => {
         expect(mockSendFunc.mock.calls[0][0]['h:Reply-To']).toBe(mockSendFunc.mock.calls[0][0].from)
 
         // Restore console.error
-        consoleSpy.mockRestore();
+        consoleSpy.mockRestore()
       })
     })
   })
