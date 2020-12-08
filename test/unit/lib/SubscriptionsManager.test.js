@@ -340,7 +340,8 @@ describe('SubscriptionsManager', () => {
       mockListsInfoFunc.mockImplementation( (callback) => callback(null, null) )
 
       expect.hasAssertions()
-      await subscriptionsMgr.send(options.parent, fields, extendedFields, options, siteConfig).then(response => {
+      await subscriptionsMgr.send(options.parent, fields, extendedFields, options, siteConfig).catch(error => {
+        expect(error.message).toEqual(`Unable to find mailing list for ${options.parent}`)
         expect(mockListsFunc).toHaveBeenCalledTimes(1)
         expect(mockListsInfoFunc).toHaveBeenCalledTimes(1)
         expect(mockListsMembersListFunc).toHaveBeenCalledTimes(0)
