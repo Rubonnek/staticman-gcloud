@@ -3,7 +3,6 @@ const config = require('./config')
 const express = require('express')
 const ExpressBrute = require('express-brute')
 const objectPath = require('object-path')
-const cors = require('cors')
 
 class StaticmanAPI {
   constructor () {
@@ -36,19 +35,12 @@ class StaticmanAPI {
   }
 
   initialiseCORS () {
-    console.log('in initialiseCORS');
-    this.corsOptions = {
-      origin: [/http[s]?:\/\/localhost:?\d*/, /http[s]?:\/\/10.0.2.2:?\d*/], 
-      //origin: /example\.com$/, 
-      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept']
-    }
+    this.server.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*')
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
 
-    // this.server.use((req, res, next) => {
-    //   res.header('Access-Control-Allow-Origin', '*')
-    //   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
-
-    //   next()
-    // })
+      next()
+    })
   }
 
   initialiseRoutes () {
@@ -56,7 +48,6 @@ class StaticmanAPI {
     this.server.get(
       '/v:version/connect/:username/:repository',
       this.bruteforce.prevent,
-      cors(this.corsOptions), 
       this.requireApiVersion([1, 2]),
       this.controllers.connect
     )
@@ -65,7 +56,6 @@ class StaticmanAPI {
     this.server.post(
       '/v:version/entry/:username/:repository/:branch',
       this.bruteforce.prevent,
-      cors(this.corsOptions), 
       this.requireApiVersion([1, 2]),
       this.requireParams(['fields']),
       this.controllers.process
@@ -74,7 +64,6 @@ class StaticmanAPI {
     this.server.post(
       '/v:version/entry/:username/:repository/:branch/:property',
       this.bruteforce.prevent,
-      cors(this.corsOptions), 
       this.requireApiVersion([2]),
       this.requireParams(['fields']),
       this.controllers.process
@@ -83,7 +72,6 @@ class StaticmanAPI {
     this.server.post(
       '/v:version/entry/:service/:username/:repository/:branch/:property',
       this.bruteforce.prevent,
-      cors(this.corsOptions), 
       this.requireApiVersion([3]),
       this.requireService(['github', 'gitlab']),
       this.requireParams(['fields']),
@@ -94,7 +82,6 @@ class StaticmanAPI {
     this.server.get(
       '/v:version/encrypt/:text',
       this.bruteforce.prevent,
-      cors(this.corsOptions), 
       this.requireApiVersion([2, 3]),
       this.controllers.encrypt
     )
@@ -103,7 +90,6 @@ class StaticmanAPI {
     this.server.get(
       '/v:version/auth/:service/:username/:repository/:branch/:property',
       this.bruteforce.prevent,
-      cors(this.corsOptions), 
       this.requireApiVersion([2, 3]),
       this.requireService(['github', 'gitlab']),
       this.controllers.auth
