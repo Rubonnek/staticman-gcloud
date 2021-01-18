@@ -135,6 +135,18 @@ const schema = {
       default: null,
       env: 'SLACK_WEBHOOK'
     }
+  },
+  commentIdGenerator: {
+    doc: 'The scheme to use for generating IDs for comments. More info about nanoid - https://github.com/ai/nanoid',
+    format: ['uuid', 'nanoid', 'nanoid-lowercase'],
+    default: 'uuid',
+    env: 'COMMENT_ID_GENERATOR'
+  },
+  commentIdLength: {
+    doc: 'The desired length of generated comment IDs. Only applicable when commentIdGenerator is set to "nanoid" or "nanoid-lowercase"',
+    format: Number,
+    default: 21,
+    env: 'COMMENT_ID_LENGTH'
   }
 }
 
