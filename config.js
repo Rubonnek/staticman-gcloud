@@ -17,6 +17,12 @@ const schema = {
       format: String,
       default: null,
       env: 'AKISMET_API_KEY'
+    },
+    bypassValue: {
+      doc: 'Value to pass in as comment author, author email, author URL, or content in order to bypass Akismet spam-checking. Intended to be used for testing in lieu of disabling Akismet via the site config.',
+      format: String,
+      default: null,
+      env: 'AKISMET_BYPASS_VALUE'
     }
   },
   analytics: {
