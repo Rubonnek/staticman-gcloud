@@ -18,6 +18,7 @@ module.exports = async (req, res, next) => {
   let service = req.params.service
   const version = req.params.version
   let staticman = null
+  let configBranch = null
   // v1 of the webhook endpoint assumed GitHub.
   if (!service && version === '1') {
     service = 'github'
@@ -29,21 +30,34 @@ module.exports = async (req, res, next) => {
     service = req.params.service
     staticman = await new Staticman(req.params)
     staticman.setConfigPath()
+
+    await staticman.getSiteConfig().then((siteConfig) => {
+      configBranch = siteConfig.get('branch') || config.get('branch')
+    }).catch((error) => {
+      errorsRaised = errorsRaised.concat(error)
+    })
+
+    if (configBranch && (req.params.branch !== configBranch)) {
+      console.log(`Branch check failed - configBranch = ${configBranch}, paramsBranch = ${req.params.branch}`)
+      errorsRaised.push('Branch mismatch. Ignoring request.')
+    }
   }
 
-  switch (service) {
-    case 'github':
-      await _handleWebhookGitHub(req, service, staticman).catch((errors) => {
-        errorsRaised = errorsRaised.concat(errors)
-      })
-      break
-    case 'gitlab':
-      await _handleWebhookGitLab(req, service, staticman).catch((errors) => {
-        errorsRaised = errorsRaised.concat(errors)
-      })
-      break
-    default:
-      errorsRaised.push('Unexpected service specified.')
+  if (errorsRaised.length === 0) {
+    switch (service) {
+      case 'github':
+        await _handleWebhookGitHub(req, service, staticman, configBranch).catch((errors) => {
+          errorsRaised = errorsRaised.concat(errors)
+        })
+        break
+      case 'gitlab':
+        await _handleWebhookGitLab(req, service, staticman, configBranch).catch((errors) => {
+          errorsRaised = errorsRaised.concat(errors)
+        })
+        break
+      default:
+        errorsRaised.push('Unexpected service specified.')
+    }
   }
 
   if (errorsRaised.length > 0) {
@@ -57,7 +71,7 @@ module.exports = async (req, res, next) => {
   }
 }
 
-const _handleWebhookGitHub = async function (req, service, staticman) {
+const _handleWebhookGitHub = async function (req, service, staticman, configBranch) {
   let errorsRaised = []
 
   const event = req.headers['x-github-event']
@@ -69,7 +83,7 @@ const _handleWebhookGitHub = async function (req, service, staticman) {
       if (staticman) {
         // Webhook request authentication is NOT supported in v1 of the endpoint.
         await staticman.getSiteConfig().then((siteConfig) => {
-          webhookSecretExpected = siteConfig.get('githubWebhookSecret')
+          webhookSecretExpected = siteConfig.get('githubWebhookSecret') || config.get('githubWebhookSecret')
         })
       }
 
@@ -89,7 +103,7 @@ const _handleWebhookGitHub = async function (req, service, staticman) {
       }
 
       if (reqAuthenticated) {
-        await _handleMergeRequest(req.params, service, req.body, staticman).catch((errors) => {
+        await _handleMergeRequest(req.params, service, req.body, staticman, configBranch).catch((errors) => {
           errorsRaised = errors
         })
       }
@@ -101,7 +115,7 @@ const _handleWebhookGitHub = async function (req, service, staticman) {
   }
 }
 
-const _handleWebhookGitLab = async function (req, service, staticman) {
+const _handleWebhookGitLab = async function (req, service, staticman, configBranch) {
   let errorsRaised = []
 
   const event = req.headers['x-gitlab-event']
@@ -113,7 +127,7 @@ const _handleWebhookGitLab = async function (req, service, staticman) {
       if (staticman) {
         // Webhook request authentication is NOT supported in v1 of the endpoint.
         await staticman.getSiteConfig().then((siteConfig) => {
-          webhookSecretExpected = siteConfig.get('gitlabWebhookSecret')
+          webhookSecretExpected = siteConfig.get('gitlabWebhookSecret') || config.get('gitlabWebhookSecret')
         })
       }
 
@@ -137,7 +151,7 @@ const _handleWebhookGitLab = async function (req, service, staticman) {
       }
 
       if (reqAuthenticated) {
-        await _handleMergeRequest(req.params, service, req.body, staticman).catch((errors) => {
+        await _handleMergeRequest(req.params, service, req.body, staticman, configBranch).catch((errors) => {
           errorsRaised = errors
         })
       }
@@ -154,7 +168,7 @@ const _verifyGitHubSignature = function (secret, data, signature) {
   return bufferEq(Buffer.from(signature), Buffer.from(signedData))
 }
 
-const _handleMergeRequest = async function (params, service, data, staticman) {
+const _handleMergeRequest = async function (params, service, data, staticman, configBranch) {
   // Allow for multiple errors to be raised and reported back.
   const errors = []
 
@@ -162,43 +176,13 @@ const _handleMergeRequest = async function (params, service, data, staticman) {
     ? require('universal-analytics')(config.get('analytics.uaTrackingId'))
     : null
 
-  const version = params.version
-  let username = params.username
-  let repository = params.repository
-  let branch = params.branch
-
-  let gitService = null
   let mergeReqNbr = null
+  let webhookBranch = null
   if (service === 'github') {
-    /*
-     * In v1 of the endpoint, the service, username, repository, and branch parameters were
-     * ommitted. As such, if not provided in the webhook request URL, pull them from the webhook
-     * payload.
-     */
-    if (username === null || typeof username === 'undefined') {
-      username = data.repository.owner.login
-    }
-    if (repository === null || typeof repository === 'undefined') {
-      repository = data.repository.name
-    }
-    if (branch === null || typeof branch === 'undefined') {
-      branch = data.pull_request.base.ref
-    }
-
-    gitService = await gitFactory.create('github', {
-      version: version,
-      username: username,
-      repository: repository,
-      branch: branch
-    })
+    webhookBranch = data.pull_request.base.ref
     mergeReqNbr = data.number
   } else if (service === 'gitlab') {
-    gitService = await gitFactory.create('gitlab', {
-      version: version,
-      username: username,
-      repository: repository,
-      branch: branch
-    })
+    webhookBranch = data.object_attributes.target_branch
     mergeReqNbr = data.object_attributes.iid
   } else {
     errors.push('Unable to determine service.')
@@ -210,12 +194,18 @@ const _handleMergeRequest = async function (params, service, data, staticman) {
     return Promise.reject(errors)
   }
 
+  const gitService = await _buildGitService(params, service, configBranch, webhookBranch).catch((error) => {
+    errors.push(error)
+    return Promise.reject(errors)
+  })
+
   let review = await gitService.getReview(mergeReqNbr).catch((error) => {
     const msg = `Failed to retrieve merge request ${mergeReqNbr} - ${error}`
     console.error(msg)
     errors.push(msg)
     return Promise.reject(errors)
   })
+  //console.log('review = %o', review)
 
   /*
    * We might receive "real" (non-bot) pull requests for files other than Staticman-processed
@@ -250,6 +240,53 @@ const _handleMergeRequest = async function (params, service, data, staticman) {
   if (errors.length > 0) {
     return Promise.reject(errors)
   }
+}
+
+const _buildGitService = async function (params, service, configBranch, webhookBranch) {
+  const version = params.version
+  let username = params.username
+  let repository = params.repository
+  let branch = params.branch
+
+  if (service === 'github') {
+    /*
+     * In v1 of the endpoint, the service, username, repository, and branch parameters were
+     * omitted. As such, if not provided in the webhook request URL, pull them from the webhook
+     * payload.
+     */
+    if (username === null || typeof username === 'undefined') {
+      username = data.repository.owner.login
+    }
+    if (repository === null || typeof repository === 'undefined') {
+      repository = data.repository.name
+    }
+    if (branch === null || typeof branch === 'undefined') {
+      branch = data.pull_request.base.ref
+    }
+  }
+
+  let gitService = null
+  /*
+   * A merge request processed (i.e., opened, merged, closed) against one branch in a repository 
+   * will trigger ALL webhooks triggered by merge request events in that repository. Meaning, 
+   * the webhook controller running in a (for example) prod Staticman instance will receive 
+   * webhook calls triggered by merge request events against a (for example) dev branch. As such, 
+   * we should expect plenty of extraneous webhook requests. The critical criterion is the branch 
+   * in the webhook payload matching the branch specified in the configuration.
+   */
+  if ((configBranch && (configBranch !== webhookBranch)) || branch !== webhookBranch) {
+    console.log(`Merge branch mismatch - configBranch = ${configBranch}, webhookBranch = ${webhookBranch}, paramsBranch = ${branch}`)
+    return Promise.reject('Merge branch mismatch. Ignoring request.')
+  } else {
+    gitService = await gitFactory.create(service, {
+      version: version,
+      username: username,
+      repository: repository,
+      branch: branch
+    })
+  }
+
+  return gitService
 }
 
 const _createNotifyMailingList = async function (review, staticman, ua) {
