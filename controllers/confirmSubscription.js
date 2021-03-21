@@ -36,6 +36,10 @@ module.exports = async (req, res, next) => {
       throw new Error('Authenticity check failed.')
     }
 
+    if (confirmData === null || confirmData.exeEnv !== config.get('exeEnv')) {
+      throw new Error('Environment check failed.')
+    }
+
     const staticman = await new Staticman(req.params)
     staticman.setConfigPath()
 
