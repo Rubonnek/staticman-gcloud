@@ -11,7 +11,8 @@ Staticwoman is a fork of [Staticman](https://github.com/eduardoboucas/staticman)
 - [Customizing the subject and content of notification emails](https://github.com/hispanic/staticwoman/pull/4)
 - [Double opt-in for notification emails and GDPR compliance](https://github.com/hispanic/staticwoman/pull/6)
 - [Customizing the size of generated comment IDs](https://github.com/hispanic/staticwoman/pull/9)
-- [Allow for bypassing Akismet spam-checking when testing](https://github.com/hispanic/staticwoman/pull/10)
+- [Bypassing Akismet spam-checking when testing](https://github.com/hispanic/staticwoman/pull/10)
+- [Support for a development lifecycle that progresses through multiple environments (e.g., dev, staging, prod)](https://github.com/hispanic/staticwoman/pull/11)
 
 I expect that the original Staticman project will include some version of the above functionality sooner or later. Until then, here 'tis. I haven't made any effort to document this new functionality beyond the comments found in the above-referenced pull requests. If you have interest in making use of any of these features and you'd like to see said documentation created, please open an issue and I'll see what I can do. 
 

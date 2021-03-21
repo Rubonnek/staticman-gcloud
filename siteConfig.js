@@ -55,9 +55,10 @@ const schema = {
     }
   },
   branch: {
-    doc: 'Name of the branch being used within the GitHub repository.',
+    doc: 'Name of the branch being used within the GitHub repository. Highly recommended to set when using a shared Staticman instance, but to be left un-set when the site/repo config needs to be promoted without change through multiple environments (e.g., dev, staging, prod).',
+    docExample: 'main',
     format: String,
-    default: 'master'
+    default: ''
   },
   commitMessage: {
     doc: 'Text to be used as the commit message when pushing entries to the GitHub repository.',
