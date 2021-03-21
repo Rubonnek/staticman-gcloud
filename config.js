@@ -50,6 +50,12 @@ const schema = {
     env: 'BRANCH'
   },
   email: {
+    apiHost: {
+      doc: 'Mailgun API host/region to be used for email notifications. Will be overridden by a `notifications.apiHost` parameter in the site/repo config, if one is set.',
+      format: String,
+      default: 'api.mailgun.net',
+      env: 'EMAIL_API_HOST'
+    },
     apiKey: {
       doc: 'Mailgun API key to be used for email notifications. Will be overridden by a `notifications.apiKey` parameter in the site/repo config, if one is set.',
       format: String,

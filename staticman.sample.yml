@@ -57,6 +57,9 @@ comments:
     # Mailgun API key
     #apiKey: "1q2w3e4r"
 
+    # Mailgun API host/region. If in EU region, use 'api.eu.mailgun.net'.
+    #apiHost: "api.mailgun.net"
+
     # (!) ENCRYPTED
     #
     # Mailgun domain (encrypted)
