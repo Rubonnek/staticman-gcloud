@@ -157,6 +157,11 @@ const schema = {
       format: ['none', 'single', 'double'],
       default: 'none'
     },
+    apiHost: {
+      doc: 'Mailgun API host/region',
+      format: String,
+      default: ''
+    },
     apiKey: {
       doc: 'Mailgun API key',
       format: 'EncryptedString',
