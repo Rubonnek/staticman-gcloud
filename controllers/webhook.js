@@ -194,7 +194,7 @@ const _handleMergeRequest = async function (params, service, data, staticman, co
     return Promise.reject(errors)
   }
 
-  const gitService = await _buildGitService(params, service, configBranch, webhookBranch).catch((error) => {
+  const gitService = await _buildGitService(params, service, data, configBranch, webhookBranch).catch((error) => {
     errors.push(error)
     return Promise.reject(errors)
   })
@@ -205,7 +205,7 @@ const _handleMergeRequest = async function (params, service, data, staticman, co
     errors.push(msg)
     return Promise.reject(errors)
   })
-  //console.log('review = %o', review)
+  // console.log('review = %o', review)
 
   /*
    * We might receive "real" (non-bot) pull requests for files other than Staticman-processed
@@ -242,7 +242,7 @@ const _handleMergeRequest = async function (params, service, data, staticman, co
   }
 }
 
-const _buildGitService = async function (params, service, configBranch, webhookBranch) {
+const _buildGitService = async function (params, service, data, configBranch, webhookBranch) {
   const version = params.version
   let username = params.username
   let repository = params.repository
@@ -267,16 +267,16 @@ const _buildGitService = async function (params, service, configBranch, webhookB
 
   let gitService = null
   /*
-   * A merge request processed (i.e., opened, merged, closed) against one branch in a repository 
-   * will trigger ALL webhooks triggered by merge request events in that repository. Meaning, 
-   * the webhook controller running in a (for example) prod Staticman instance will receive 
-   * webhook calls triggered by merge request events against a (for example) dev branch. As such, 
-   * we should expect plenty of extraneous webhook requests. The critical criterion is the branch 
+   * A merge request processed (i.e., opened, merged, closed) against one branch in a repository
+   * will trigger ALL webhooks triggered by merge request events in that repository. Meaning,
+   * the webhook controller running in a (for example) prod Staticman instance will receive
+   * webhook calls triggered by merge request events against a (for example) dev branch. As such,
+   * we should expect plenty of extraneous webhook requests. The critical criterion is the branch
    * in the webhook payload matching the branch specified in the configuration.
    */
   if ((configBranch && (configBranch !== webhookBranch)) || branch !== webhookBranch) {
     console.log(`Merge branch mismatch - configBranch = ${configBranch}, webhookBranch = ${webhookBranch}, paramsBranch = ${branch}`)
-    return Promise.reject('Merge branch mismatch. Ignoring request.')
+    return Promise.reject(new Error('Merge branch mismatch. Ignoring request.'))
   } else {
     gitService = await gitFactory.create(service, {
       version: version,

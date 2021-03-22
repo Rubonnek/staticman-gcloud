@@ -70,6 +70,11 @@ beforeEach(() => {
       }
     }
   })
+
+  mockGetSiteConfigFn.mockImplementation(() => new Promise((resolve, reject) => resolve(new Map([
+      
+    ])))
+  )
 })
 
 afterEach(() => {
@@ -202,7 +207,14 @@ describe('Webhook controller', () => {
     req.params.service = service
 
     req.body = {
-      object_attributes: {}
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
+      object_attributes: {
+        target_branch: 'master'
+      }
     }
 
     if (service === 'github') {
@@ -234,8 +246,7 @@ describe('Webhook controller', () => {
       if (service === 'github') {
         expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockCreateFn.mock.calls[0][0]).toBe(service)
+      expect(mockCreateFn).toHaveBeenCalledTimes(0)
       expect(res.send.mock.calls[0][0]).toEqual({ errors: '[\"No pull/merge request number found.\"]' })
       expect(res.status.mock.calls[0][0]).toBe(400)
     })
@@ -251,6 +262,7 @@ describe('Webhook controller', () => {
     req.params.branch = null
 
     req.body = {
+      number: 123,
       pull_request: {
         base: {
           ref: 'master'
@@ -294,6 +306,7 @@ describe('Webhook controller', () => {
     req.params.branch = null
 
     req.body = {
+      number: 123,
       pull_request: {
         base: {
           ref: 'master'
@@ -337,8 +350,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -394,8 +413,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -441,8 +466,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -488,8 +519,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -537,8 +574,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -594,8 +637,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -639,8 +688,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -674,8 +729,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 
@@ -708,8 +769,14 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        }
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master'
       }
     }
 

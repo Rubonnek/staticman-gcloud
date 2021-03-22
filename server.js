@@ -42,7 +42,7 @@ class StaticmanAPI {
 
       /*
        * For example, /v3/confirm/gitlab/username/repo-name/dev/comments
-       * We only want to "lock down" the "entry" endpoint, as that is the only endpoint called from 
+       * We only want to "lock down" the "entry" endpoint, as that is the only endpoint called from
        * browser-rendered web pages.
        */
       const isEntryEndpoint = req.path.match(/^\/v\d\/entry\//)
@@ -52,19 +52,19 @@ class StaticmanAPI {
 
         originAllowed = allowedOrigins.some(oneOrigin => {
           // Allow for regular expressions in the config. For example, http://localhost:.*
-          return new RegExp(oneOrigin).test(reqOrigin);
-        });
+          return new RegExp(oneOrigin).test(reqOrigin)
+        })
       }
-      
+
       if (originAllowed) {
         res.setHeader('Access-Control-Allow-Origin', reqOrigin)
         res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
         return next()
       } else {
         /*
-         * Abort processing of the request and return a 403 Forbidden. With this, we are taking 
-         * liberties with the CORS-centric origin header, as a CORS violation is really only 
-         * supposed to be acted upon by the user-agent, not the server. More info: 
+         * Abort processing of the request and return a 403 Forbidden. With this, we are taking
+         * liberties with the CORS-centric origin header, as a CORS violation is really only
+         * supposed to be acted upon by the user-agent, not the server. More info:
          * https://github.com/expressjs/cors/issues/109#issuecomment-289324022
          */
         return res.status(403).send({
