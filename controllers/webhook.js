@@ -177,64 +177,114 @@ const _handleMergeRequest = async function (params, service, data, staticman, co
     : null
 
   let mergeReqNbr = null
-  let webhookBranch = null
+  let mergeTargetBranch = null
+  let reviewBranch = null
+  let reviewBody = null
+  let requestMerged = false
   if (service === 'github') {
-    webhookBranch = data.pull_request.base.ref
     mergeReqNbr = data.number
+    mergeTargetBranch = data.pull_request.base.ref
+    reviewBranch = data.pull_request.head.ref
+    reviewBody = data.pull_request.body
+
+    /*
+     * In GitHub, when a pull request is merged, in the webhook payload, "state" = "closed" and
+     * "merged" = true. If the review is retrieved from GitHub, the review "state" = "merged".
+     * In GitHub, when a pull request is closed, in the webhook payload, "state" = "closed" and
+     * "merged" = false. If the review is retrieved from GitHub, the review "state" = "closed".
+     * In short, with GitHub, we can't look at the "state" property supplied in the webhook.
+     */
+    requestMerged = data.pull_request.merged
   } else if (service === 'gitlab') {
-    webhookBranch = data.object_attributes.target_branch
     mergeReqNbr = data.object_attributes.iid
+    mergeTargetBranch = data.object_attributes.target_branch
+    reviewBranch = data.object_attributes.source_branch
+    reviewBody = data.object_attributes.description
+
+    /*
+     * In GitLab, when a merge request is merged, in the webhook payload, "state" = "merged".
+     * If the review is retrieved from GitLab, the review "state" = "merged", too.
+     * In GitLab, when a merge request is closed, in the webhook payload, "state" = "closed".
+     * If the review is retrieved from GitLab, the review "state" = "closed", too.
+     */
+    requestMerged = (data.object_attributes.state === 'merged')
   } else {
     errors.push('Unable to determine service.')
     return Promise.reject(errors)
   }
+  // console.log(`mergeReqNbr = ${mergeReqNbr}, mergeTargetBranch = ${mergeTargetBranch}, reviewBranch = ${reviewBranch}, requestMerged = ${requestMerged}`)
 
-  if (mergeReqNbr === null || typeof mergeReqNbr === 'undefined') {
-    errors.push('No pull/merge request number found.')
-    return Promise.reject(errors)
+  let branch = params.branch
+  if (!configBranch && !branch) {
+    console.warn('WARNING!: No target/allowed branch specified in webhook request URL or ' +
+      'Staticman configuration. This could result in a non-production environment processing ' +
+      'production merge requests and/or a production environment processing non-production ' +
+      'merge requests (and sending notifications for them to production subscribers).')
   }
 
-  const gitService = await _buildGitService(params, service, data, configBranch, webhookBranch).catch((error) => {
-    errors.push(error)
-    return Promise.reject(errors)
-  })
+  if (!configBranch) {
+    configBranch = mergeTargetBranch
+  }
 
-  let review = await gitService.getReview(mergeReqNbr).catch((error) => {
-    const msg = `Failed to retrieve merge request ${mergeReqNbr} - ${error}`
-    console.error(msg)
-    errors.push(msg)
-    return Promise.reject(errors)
-  })
-  // console.log('review = %o', review)
-
+  if (!branch) {
+    branch = mergeTargetBranch
+  }
   /*
-   * We might receive "real" (non-bot) pull requests for files other than Staticman-processed
-   * comments. Ignore these by filtering on Staticman-created merge request branches.
+   * A merge request processed (i.e., opened, merged, closed) against one branch in a repository
+   * will trigger ALL webhooks triggered by merge request events in that repository. Meaning,
+   * the webhook controller running in a (for example) prod Staticman instance will receive
+   * webhook calls triggered by merge request events against a (for example) dev branch. As such,
+   * we should expect plenty of extraneous webhook requests. The critical criterion is the
+   * (merge target) branch in the webhook payload matching the branch specified in the
+   * configuration.
    */
-  if (review.sourceBranch.indexOf('staticman_') > -1) {
+  if (configBranch === branch && branch === mergeTargetBranch) {
     /*
-     * Note that the review state is derived from the call to the git service, NOT the webhook
-     * payload. And merged requests are represented with different states in each (at least in
-     * GitHub). Tricky.
-     *
      * We'll regularly receive webhook calls whenever a pull/merge request is opened, not just
      * merged/closed.
      */
-    if (review.state === 'merged' || review.state === 'closed') {
-      await _createNotifyMailingList(review, staticman, ua).catch((error) => {
-        errors.push(error.message)
-      })
-
+    if (requestMerged) {
       /*
-       * Deleting the merge request branch is only necessary for GitHub, as GitLab automatically
-       * deletes it upon merging.
+       * We might receive "real" (non-bot) pull requests for files other than Staticman-processed
+       * comments. Ignore these by filtering on Staticman-created merge request branches.
        */
-      if (service === 'github') {
-        await _deleteMergeRequestBranch(gitService, review, ua).catch((error) => {
-          errors.push(error)
+      if (reviewBranch.indexOf('staticman_') > -1) {
+        await _createNotifyMailingList(reviewBody, staticman, ua).catch((error) => {
+          if (error.message) {
+            errors.push(error.message)
+          } else {
+            errors.push(JSON.stringify(error))
+          }
         })
+
+        /*
+         * Deleting the merge request branch is only necessary for GitHub, as GitLab automatically
+         * deletes it upon merging.
+         */
+        if (service === 'github') {
+          const gitService = await _buildGitService(params, service, data, configBranch, mergeTargetBranch).catch((error) => {
+            errors.push(error)
+            return Promise.reject(errors)
+          })
+
+          await _deleteMergeRequestBranch(gitService, reviewBranch, ua).catch((error) => {
+            errors.push(error)
+          })
+        }
+      } else {
+        // This is a valid condition, so don't put in errors array.
+        console.log(`Request #${mergeReqNbr} not Staticman-generated - reviewBranch = ${reviewBranch}`)
+        return Promise.reject(new Error('Request #' + mergeReqNbr + ' not Staticman-generated. Ignoring.'))
       }
+    } else {
+      // This is a valid condition, so don't put in errors array.
+      console.log(`Request #${mergeReqNbr} not merged`)
+      return Promise.reject(new Error('Request #' + mergeReqNbr + ' not merged. Ignoring.'))
     }
+  } else {
+    // This is a valid condition, so don't put in errors array.
+    console.log(`Merge branch mismatch for pull/merge request #${mergeReqNbr} - configBranch = ${configBranch}, mergeTargetBranch = ${mergeTargetBranch}, paramsBranch = ${branch}`)
+    return Promise.reject(new Error('Merge branch mismatch. Ignoring pull/merge request #' + mergeReqNbr))
   }
 
   if (errors.length > 0) {
@@ -265,36 +315,22 @@ const _buildGitService = async function (params, service, data, configBranch, we
     }
   }
 
-  let gitService = null
-  /*
-   * A merge request processed (i.e., opened, merged, closed) against one branch in a repository
-   * will trigger ALL webhooks triggered by merge request events in that repository. Meaning,
-   * the webhook controller running in a (for example) prod Staticman instance will receive
-   * webhook calls triggered by merge request events against a (for example) dev branch. As such,
-   * we should expect plenty of extraneous webhook requests. The critical criterion is the branch
-   * in the webhook payload matching the branch specified in the configuration.
-   */
-  if ((configBranch && (configBranch !== webhookBranch)) || branch !== webhookBranch) {
-    console.log(`Merge branch mismatch - configBranch = ${configBranch}, webhookBranch = ${webhookBranch}, paramsBranch = ${branch}`)
-    return Promise.reject(new Error('Merge branch mismatch. Ignoring request.'))
-  } else {
-    gitService = await gitFactory.create(service, {
-      version: version,
-      username: username,
-      repository: repository,
-      branch: branch
-    })
-  }
+  const gitService = await gitFactory.create(service, {
+    version: version,
+    username: username,
+    repository: repository,
+    branch: branch
+  })
 
   return gitService
 }
 
-const _createNotifyMailingList = async function (review, staticman, ua) {
+const _createNotifyMailingList = async function (reviewBody, staticman, ua) {
   /*
    * The "staticman_notification" comment section of the pull/merge request comment only
    * exists if notifications were enabled at the time the pull/merge request was created.
    */
-  const bodyMatch = review.body.match(/(?:.*?)<!--staticman_notification:(.+?)-->(?:.*?)/i)
+  const bodyMatch = reviewBody.match(/(?:.*?)<!--staticman_notification:(.+?)-->(?:.*?)/i)
   if (bodyMatch && (bodyMatch.length === 2)) {
     try {
       const parsedBody = JSON.parse(bodyMatch[1])
@@ -318,10 +354,10 @@ const _createNotifyMailingList = async function (review, staticman, ua) {
   }
 }
 
-const _deleteMergeRequestBranch = async function (gitService, review, ua) {
+const _deleteMergeRequestBranch = async function (gitService, reviewBranch, ua) {
   try {
     // This will throw the error 'Reference does not exist' if the branch has already been deleted.
-    await gitService.deleteBranch(review.sourceBranch)
+    await gitService.deleteBranch(reviewBranch)
     if (ua) {
       ua.event('Hooks', 'Delete branch').send()
     }
@@ -330,7 +366,7 @@ const _deleteMergeRequestBranch = async function (gitService, review, ua) {
       ua.event('Hooks', 'Delete branch error').send()
     }
 
-    const msg = `Failed to delete merge branch ${review.sourceBranch} - ${err}`
+    const msg = `Failed to delete merge branch ${reviewBranch} - ${err}`
     console.error(msg)
     return Promise.reject(msg)
   }
