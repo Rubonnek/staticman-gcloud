@@ -249,7 +249,7 @@ const _handleMergeRequest = async function (params, service, data, staticman, co
        * comments. Ignore these by filtering on Staticman-created merge request branches.
        */
       if (reviewBranch.indexOf('staticman_') > -1) {
-        await _createNotifyMailingList(reviewBody, staticman, ua).catch((error) => {
+        await _notifyMailingList(reviewBody, staticman, ua).catch((error) => {
           if (error.message) {
             errors.push(error.message)
           } else {
@@ -325,7 +325,7 @@ const _buildGitService = async function (params, service, data, configBranch, we
   return gitService
 }
 
-const _createNotifyMailingList = async function (reviewBody, staticman, ua) {
+const _notifyMailingList = async function (reviewBody, staticman, ua) {
   /*
    * The "staticman_notification" comment section of the pull/merge request comment only
    * exists if notifications were enabled at the time the pull/merge request was created.
