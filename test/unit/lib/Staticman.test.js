@@ -1158,7 +1158,7 @@ describe('Staticman interface', () => {
 
       expect(staticman._validateConfig(config)).toEqual({
         _smErrorCode: 'MISSING_CONFIG_FIELDS',
-        data: ['branch', 'path']
+        data: ['path']
       })
     })
 

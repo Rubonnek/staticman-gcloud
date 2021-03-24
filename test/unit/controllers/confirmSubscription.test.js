@@ -19,7 +19,8 @@ const mockConfirmData = {
   subscribeConfirmText: 'Mock confirm text!',
   subscribeConfirmRedirect: 'https://example.com/redirect',
   subscribeConfirmRedirectError: 'https://example.com/redirectError',
-  pepper: 'mock crypto pepper'
+  pepper: 'mock crypto pepper',
+  exeEnv: 'staging'
 }
 
 let mockDecryptFunc = jest.fn()
@@ -62,6 +63,7 @@ beforeEach(() => {
   })
 
   config.set('cryptoPepper', mockConfirmData.pepper)
+  config.set('exeEnv', mockConfirmData.exeEnv)
 })
 
 afterEach(() => {

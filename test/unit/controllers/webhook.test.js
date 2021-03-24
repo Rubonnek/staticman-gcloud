@@ -1,14 +1,11 @@
 let mockCreateHmacFn = jest.fn()
 
 const helpers = require('./../../helpers')
-const Review = require('../../../lib/models/Review')
 const sampleData = require('./../../helpers/sampleData')
 
 let req
 let res
-let mockReview
 
-let mockGetReviewFn = jest.fn()
 let mockDeleteBranchFn = jest.fn()
 let mockCreateFn = jest.fn()
 let mockSetConfigPathFn = jest.fn()
@@ -54,7 +51,6 @@ beforeEach(() => {
 
   mockCreateFn.mockImplementation((service, options) => {
     return {
-      getReview: mockGetReviewFn,
       deleteBranch: mockDeleteBranchFn
     }
   })
@@ -70,10 +66,14 @@ beforeEach(() => {
       }
     }
   })
+
+  mockGetSiteConfigFn.mockImplementation(() => new Promise((resolve, reject) => resolve(new Map([
+      
+    ])))
+  )
 })
 
 afterEach(() => {
-  mockGetReviewFn.mockClear()
   mockDeleteBranchFn.mockClear()
   mockCreateFn.mockClear()
   mockSetConfigPathFn.mockClear()
@@ -197,51 +197,6 @@ describe('Webhook controller', () => {
   })
 
   test.each([
-    ['github'], ['gitlab']
-  ])('abort and return an error if no merge request number found in webhook payload - %s', async (service) => {
-    req.params.service = service
-
-    req.body = {
-      object_attributes: {}
-    }
-
-    if (service === 'github') {
-      req.headers['x-github-event'] = 'pull_request'
-
-      // Inject a value for the expected webhook secret into the site config.
-      mockGetSiteConfigFn.mockImplementation(() => new Promise((resolve, reject) => resolve(new Map([
-          ['githubWebhookSecret', 'sha1=' + mockHmacDigest]
-        ])))
-      )
-
-      // Mock a signature from GitHub that matches the expected signature.
-      req.headers['x-hub-signature'] = 'sha1=' + mockHmacDigest
-    } else if (service === 'gitlab') {
-      req.headers['x-gitlab-event'] = 'Merge Request Hook'
-
-      // Inject a value for the expected webhook secret into the site config.
-      mockGetSiteConfigFn.mockImplementation(() => new Promise((resolve, reject) => resolve(new Map([
-          ['gitlabWebhookSecret', '2a-foobar-db72']
-        ])))
-      )
-
-      // Mock a token from GitLab that matches the expected token.
-      req.headers['x-gitlab-token'] = '2a-foobar-db72'
-    }
-
-    expect.hasAssertions()
-    return webhook(req, res).then(response => {
-      if (service === 'github') {
-        expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
-      }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockCreateFn.mock.calls[0][0]).toBe(service)
-      expect(res.send.mock.calls[0][0]).toEqual({ errors: '[\"No pull/merge request number found.\"]' })
-      expect(res.status.mock.calls[0][0]).toBe(400)
-    })
-  })
-
-  test.each([
     [null]
   ])('default to github if version equals 1 and no service specified in parameters - %s', async (service) => {
     req.params.version = '1'
@@ -251,10 +206,15 @@ describe('Webhook controller', () => {
     req.params.branch = null
 
     req.body = {
+      number: 123,
       pull_request: {
         base: {
           ref: 'master'
-        }
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true
       },
       repository: {
         name: req.params.repository,
@@ -294,10 +254,15 @@ describe('Webhook controller', () => {
     req.params.branch = null
 
     req.body = {
+      number: 123,
       pull_request: {
         base: {
           ref: 'master'
-        }
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true
       },
       repository: {
         name: 'foorepo',
@@ -332,70 +297,25 @@ describe('Webhook controller', () => {
 
   test.each([
     ['github'], ['gitlab']
-  ])('abort and return an error if error retrieving merge request - %s', async (service) => {
-    req.params.service = service
-
-    req.body = {
-      number: 123,
-      object_attributes: {
-        iid: 234
-      }
-    }
-
-    if (service === 'github') {
-      req.headers['x-github-event'] = 'pull_request'
-      mockGetSiteConfigFn.mockImplementation(() => new Promise((resolve, reject) => resolve(new Map([
-          ['githubWebhookSecret', 'sha1=' + mockHmacDigest]
-        ])))
-      )
-      req.headers['x-hub-signature'] = 'sha1=' + mockHmacDigest
-    } else if (service === 'gitlab') {
-      req.headers['x-gitlab-event'] = 'Merge Request Hook'
-      mockGetSiteConfigFn.mockImplementation(() => new Promise((resolve, reject) => resolve(new Map([
-          ['gitlabWebhookSecret', '2a-foobar-db72']
-        ])))
-      )
-      req.headers['x-gitlab-token'] = '2a-foobar-db72'
-    }
-
-    const rejectErrorMsg = 'get review error msg'
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => reject(rejectErrorMsg)))
-
-    // Suppress any calls to console.error - to keep test output clean.
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    expect.hasAssertions()
-    return webhook(req, res).then(response => {
-      if (service === 'github') {
-        expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
-      }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
-      if (service === 'github') {
-        expect(mockGetReviewFn.mock.calls[0][0]).toBe(req.body.number)
-        expect(res.send.mock.calls[0][0]).toEqual(
-          { errors: '[\"Failed to retrieve merge request ' + req.body.number + ' - ' + rejectErrorMsg + '\"]' })
-      } else if (service === 'gitlab') {
-        expect(mockGetReviewFn.mock.calls[0][0]).toBe(req.body.object_attributes.iid)
-        expect(res.send.mock.calls[0][0]).toEqual(
-          { errors: '[\"Failed to retrieve merge request ' + req.body.object_attributes.iid + ' - ' + rejectErrorMsg + '\"]' })
-      }
-      expect(res.status.mock.calls[0][0]).toBe(400)
-
-      // Restore console.error
-      consoleSpy.mockRestore();
-    })
-  })
-
-  test.each([
-    ['github'], ['gitlab']
   ])('abort and return success if merge request source branch not created by Staticman - %s', async (service) => {
     req.params.service = service
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'foo_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'foo_8xmokv5d',
+        state: 'merged'
       }
     }
 
@@ -415,34 +335,38 @@ describe('Webhook controller', () => {
       req.headers['x-gitlab-token'] = '2a-foobar-db72'
     }
 
-    mockReview = new Review('Some random PR', 'Review body', 'merged', 'some-other-branch', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
-
     expect.hasAssertions()
     return webhook(req, res).then(response => {
       if (service === 'github') {
         expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
-      if (service === 'github') {
-        expect(mockGetReviewFn.mock.calls[0][0]).toBe(req.body.number)
-      } else if (service === 'gitlab') {
-        expect(mockGetReviewFn.mock.calls[0][0]).toBe(req.body.object_attributes.iid)
-      }
+      // No attempt should be made to send notification emails.
+      expect(mockProcessMergeFn).toHaveBeenCalledTimes(0)
       expect(res.status.mock.calls[0][0]).toBe(200)
     })
   })
 
   test.each([
     ['github'], ['gitlab']
-  ])('abort and return success if merge request state not merged or closed - %s', async (service) => {
+  ])('abort and return success if merge request state not merged - %s', async (service) => {
     req.params.service = service
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: false
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'closed'
       }
     }
 
@@ -462,21 +386,13 @@ describe('Webhook controller', () => {
       req.headers['x-gitlab-token'] = '2a-foobar-db72'
     }
 
-    mockReview = new Review('Some random PR', 'Review body', 'not merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
-
     expect.hasAssertions()
     return webhook(req, res).then(response => {
       if (service === 'github') {
         expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
-      if (service === 'github') {
-        expect(mockGetReviewFn.mock.calls[0][0]).toBe(req.body.number)
-      } else if (service === 'gitlab') {
-        expect(mockGetReviewFn.mock.calls[0][0]).toBe(req.body.object_attributes.iid)
-      }
+      // No attempt should be made to send notification emails.
+      expect(mockProcessMergeFn).toHaveBeenCalledTimes(0)
       expect(res.status.mock.calls[0][0]).toBe(200)
     })
   })
@@ -488,8 +404,22 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true,
+        body: ''
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'merged',
+        description: ''
       }
     }
 
@@ -509,16 +439,11 @@ describe('Webhook controller', () => {
       req.headers['x-gitlab-token'] = '2a-foobar-db72'
     }
 
-    mockReview = new Review('Some random PR', 'Review body', 'merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
-
     expect.hasAssertions()
     return webhook(req, res).then(response => {
       if (service === 'github') {
         expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
       // No attempt should be made to send notification emails.
       expect(mockProcessMergeFn).toHaveBeenCalledTimes(0)
       if (service === 'github') {
@@ -537,8 +462,22 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true,
+        body: sampleData.prBody1
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'merged',
+        description: sampleData.prBody1
       }
     }
 
@@ -558,13 +497,6 @@ describe('Webhook controller', () => {
       req.headers['x-gitlab-token'] = '2a-foobar-db72'
     }
 
-    /*
-     * Mock a review body that contains the "staticman_notification" comment section that triggers
-     * notifications to be sent.
-     */
-    mockReview = new Review('Some random PR', sampleData.prBody1, 'merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
-
     const errorMsg = 'process merge error msg'
     mockProcessMergeFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => reject(new Error(errorMsg))))
 
@@ -573,10 +505,8 @@ describe('Webhook controller', () => {
       if (service === 'github') {
         expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       }
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
       expect(mockProcessMergeFn).toHaveBeenCalledTimes(1)
-      // Shold still attempt to delete branch despite error sending notification emails.
+      // Should still attempt to delete branch despite error sending notification emails.
       if (service === 'github') {
         expect(mockDeleteBranchFn).toHaveBeenCalledTimes(1)
       } else if (service === 'gitlab') {
@@ -594,8 +524,22 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true,
+        body: sampleData.prBody1
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'merged',
+        description: sampleData.prBody1
       }
     }
 
@@ -606,8 +550,6 @@ describe('Webhook controller', () => {
     )
     req.headers['x-hub-signature'] = 'sha1=' + mockHmacDigest
 
-    mockReview = new Review('Some random PR', sampleData.prBody1, 'merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
     mockProcessMergeFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(true)))
 
     const errorMsg = 'delete branch error msg'
@@ -620,11 +562,10 @@ describe('Webhook controller', () => {
     return webhook(req, res).then(response => {
       expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
       expect(mockProcessMergeFn).toHaveBeenCalledTimes(1)
       expect(mockDeleteBranchFn).toHaveBeenCalledTimes(1)
       expect(res.send.mock.calls[0][0]).toEqual(
-        { errors: '[\"Failed to delete merge branch ' + mockReview.sourceBranch + ' - ' + errorMsg + '\"]' })
+        { errors: '[\"Failed to delete merge branch ' + req.body.pull_request.head.ref + ' - ' + errorMsg + '\"]' })
       expect(res.status.mock.calls[0][0]).toBe(400)
 
       // Restore console.error
@@ -639,8 +580,22 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true,
+        body: sampleData.prBody1
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'merged',
+        description: sampleData.prBody1
       }
     }
 
@@ -651,8 +606,6 @@ describe('Webhook controller', () => {
     )
     req.headers['x-hub-signature'] = 'sha1=' + mockHmacDigest
 
-    mockReview = new Review('Some random PR', sampleData.prBody1, 'merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
     mockProcessMergeFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(true)))
     mockDeleteBranchFn.mockImplementation((sourceBranch) => new Promise((resolve, reject) => resolve(true)))
 
@@ -660,7 +613,6 @@ describe('Webhook controller', () => {
     return webhook(req, res).then(response => {
       expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
       expect(mockProcessMergeFn).toHaveBeenCalledTimes(1)
       expect(mockDeleteBranchFn).toHaveBeenCalledTimes(1)
       expect(res.status.mock.calls[0][0]).toBe(200)
@@ -674,8 +626,22 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true,
+        body: sampleData.prBody1
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'merged',
+        description: sampleData.prBody1
       }
     }
 
@@ -686,15 +652,12 @@ describe('Webhook controller', () => {
     )
     req.headers['x-gitlab-token'] = '2a-foobar-db72'
 
-    mockReview = new Review('Some random PR', sampleData.prBody1, 'merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
     mockProcessMergeFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(true)))
     mockDeleteBranchFn.mockImplementation((sourceBranch) => new Promise((resolve, reject) => resolve(true)))
 
     expect.hasAssertions()
     return webhook(req, res).then(response => {
-      expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
+      expect(mockCreateFn).toHaveBeenCalledTimes(0)
       expect(mockProcessMergeFn).toHaveBeenCalledTimes(1)
       expect(mockDeleteBranchFn).toHaveBeenCalledTimes(0)
       expect(res.status.mock.calls[0][0]).toBe(200)
@@ -708,8 +671,22 @@ describe('Webhook controller', () => {
 
     req.body = {
       number: 123,
+      pull_request: {
+        base: {
+          ref: 'master'
+        },
+        head: {
+          ref: 'staticman_7e82d470-0b4e-11eb-b13a-5f10e75524b8'
+        },
+        merged: true,
+        body: sampleData.prBody1
+      },
       object_attributes: {
-        iid: 234
+        iid: 234, 
+        target_branch: 'master',
+        source_branch: 'staticman_8xmokv5d',
+        state: 'merged',
+        description: sampleData.prBody1
       }
     }
 
@@ -719,9 +696,6 @@ describe('Webhook controller', () => {
       ])))
     )
     req.headers['x-hub-signature'] = 'sha1=' + mockHmacDigest
-
-    mockReview = new Review('Some random PR', sampleData.prBody1, 'merged', 'staticman_1234567', 'master')
-    mockGetReviewFn.mockImplementation((mergeReqNbr) => new Promise((resolve, reject) => resolve(mockReview)))
 
     const processMergeErrorMsg = 'process merge error msg'
     mockProcessMergeFn.mockImplementation(
@@ -737,11 +711,10 @@ describe('Webhook controller', () => {
     return webhook(req, res).then(response => {
       expect(mockCreateHmacFn).toHaveBeenCalledTimes(1)
       expect(mockCreateFn).toHaveBeenCalledTimes(1)
-      expect(mockGetReviewFn).toHaveBeenCalledTimes(1)
       expect(mockProcessMergeFn).toHaveBeenCalledTimes(1)
       expect(mockDeleteBranchFn).toHaveBeenCalledTimes(1)
       expect(res.send.mock.calls[0][0]).toEqual(
-        { errors: '[\"' + processMergeErrorMsg + '\",\"Failed to delete merge branch ' + mockReview.sourceBranch + ' - ' + deleteBranchErrorMsg + '\"]' })
+        { errors: '[\"' + processMergeErrorMsg + '\",\"Failed to delete merge branch ' + req.body.pull_request.head.ref + ' - ' + deleteBranchErrorMsg + '\"]' })
       expect(res.status.mock.calls[0][0]).toBe(400)
 
       // Restore console.error
