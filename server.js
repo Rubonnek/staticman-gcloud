@@ -49,24 +49,26 @@ class StaticmanAPI {
       const isEntryEndpoint = req.path.match(/^\/v\d\/entry\//)
       const allowedOrigins = config.get('origins')
       if (isEntryEndpoint && allowedOrigins !== null) {
-        reqOrigin = req.headers.origin
-
         originAllowed = allowedOrigins.some(oneOrigin => {
           // Allow for regular expressions in the config. For example, http://localhost:.*
-          return new RegExp(oneOrigin).test(reqOrigin)
+          return new RegExp(oneOrigin).test(req.headers.origin)
         })
 
-        /*
-         * Identify the proxy environment, if relevant, as an alternative check to the CORS
-         * origin header. Initially added for IE v11, which does not send the origin request
-         * header in same-origin POST requests.
-         */
-        console.log('req.headers = %o', req.headers)
-        const proxyEnvHeader = req.headers['X-Proxy-Env']
-        const exeEnv = config.get('exeEnv')
-        console.log('proxyEnvHeader = %o, exeEnv = %o', proxyEnvHeader, exeEnv)
-        if (proxyEnvHeader !== null && typeof proxyEnvHeader !== 'undefined' && proxyEnvHeader !== exeEnv) {
-          proxyEnvAllowed = false
+        if (originAllowed) {
+          reqOrigin = req.headers.origin
+        } else {
+          /*
+           * Identify the proxy environment, if relevant, as an alternative check to the CORS
+           * origin header. Initially added for IE v11, which does not send the origin request
+           * header in same-origin POST requests.
+           */
+          console.log('req.headers = %o', req.headers)
+          const proxyEnvHeader = req.headers['X-Proxy-Env']
+          const exeEnv = config.get('exeEnv')
+          console.log('proxyEnvHeader = %o, exeEnv = %o', proxyEnvHeader, exeEnv)
+          if (proxyEnvHeader && proxyEnvHeader !== exeEnv) {
+            proxyEnvAllowed = false
+          }
         }
       }
 
