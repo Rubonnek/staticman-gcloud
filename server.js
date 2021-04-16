@@ -39,6 +39,7 @@ class StaticmanAPI {
       // By default, return a value that allows all origins.
       let reqOrigin = '*'
       let originAllowed = true
+      let proxyEnvAllowed = true
 
       /*
        * For example, /v3/confirm/gitlab/username/repo-name/dev/comments
@@ -48,15 +49,29 @@ class StaticmanAPI {
       const isEntryEndpoint = req.path.match(/^\/v\d\/entry\//)
       const allowedOrigins = config.get('origins')
       if (isEntryEndpoint && allowedOrigins !== null) {
-        reqOrigin = req.headers.origin
-
         originAllowed = allowedOrigins.some(oneOrigin => {
           // Allow for regular expressions in the config. For example, http://localhost:.*
-          return new RegExp(oneOrigin).test(reqOrigin)
+          return new RegExp(oneOrigin).test(req.headers.origin)
         })
+
+        if (originAllowed) {
+          reqOrigin = req.headers.origin
+        } else {
+          /*
+           * Identify the proxy environment, if relevant, as an alternative check to the CORS
+           * origin header. Initially added for IE v11, which does not send the origin request
+           * header in same-origin POST requests.
+           */
+          const proxyEnvHeader = req.headers['x-proxy-env']
+          const exeEnv = config.get('exeEnv')
+          console.log('proxyEnvHeader = %o, exeEnv = %o', proxyEnvHeader, exeEnv)
+          if (proxyEnvHeader && proxyEnvHeader !== exeEnv) {
+            proxyEnvAllowed = false
+          }
+        }
       }
 
-      if (originAllowed) {
+      if (originAllowed || proxyEnvAllowed) {
         res.setHeader('Access-Control-Allow-Origin', reqOrigin)
         res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
         return next()
