@@ -62,8 +62,7 @@ class StaticmanAPI {
            * origin header. Initially added for IE v11, which does not send the origin request
            * header in same-origin POST requests.
            */
-          console.log('req.headers = %o', req.headers)
-          const proxyEnvHeader = req.headers['X-Proxy-Env']
+          const proxyEnvHeader = req.headers['x-proxy-env']
           const exeEnv = config.get('exeEnv')
           console.log('proxyEnvHeader = %o, exeEnv = %o', proxyEnvHeader, exeEnv)
           if (proxyEnvHeader && proxyEnvHeader !== exeEnv) {
