@@ -1,7 +1,7 @@
 {
-  "name": "staticman",
-  "version": "3.0.0",
-  "description": "Static sites with superpowers",
+  "name": "staticwoman",
+  "version": "3.1.0",
+  "description": "A fork of Staticman that provides additional functionality.",
   "main": "index.js",
   "scripts": {
     "prestart": "if [ ! -d node_modules ]; then npm install; fi",
@@ -15,14 +15,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eduardoboucas/staticman.git"
+    "url": "git+https://github.com/hispanic/staticwoman.git"
   },
-  "author": "Eduardo Boucas <mail@eduardoboucas.com> (https://eduardoboucas.com/)",
+  "author":
+  {
+      "name": "Michael Harry Scepaniak",
+      "email": "michaelscepaniak@gmail.com",
+      "url": "https://michaelscepaniak.com/"
+  },
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/eduardoboucas/staticman/issues"
+    "url": "https://github.com/hispanic/staticwoman/issues"
   },
-  "homepage": "https://github.com/eduardoboucas/staticman#readme",
+  "homepage": "https://github.com/hispanic/staticwoman#readme",
   "dependencies": {
     "@dadi/logger": "^1.4.1",
     "@octokit/app": "^4.1.0",
