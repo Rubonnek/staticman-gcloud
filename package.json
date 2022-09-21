@@ -1,5 +1,5 @@
 {
-  "name": "staticwoman",
+  "name": "staticman-gcloud",
   "version": "3.1.0",
   "description": "A fork of Staticman that provides additional functionality.",
   "main": "index.js",
@@ -15,57 +15,58 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hispanic/staticwoman.git"
+    "url": "git+https://github.com/Rubonnek/staticman-gcloud.git"
   },
-  "author":
-  {
-      "name": "Michael Harry Scepaniak",
-      "email": "michaelscepaniak@gmail.com",
-      "url": "https://michaelscepaniak.com/"
+  "author": {
+    "name": "Michael Harry Scepaniak",
+    "email": "michaelscepaniak@gmail.com",
+    "url": "https://michaelscepaniak.com/"
   },
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/hispanic/staticwoman/issues"
+    "url": "https://github.com/Rubonnek/staticman-gcloud/issues"
   },
-  "homepage": "https://github.com/hispanic/staticwoman#readme",
+  "homepage": "https://github.com/Rubonnek/staticman-gcloud#readme",
   "dependencies": {
-    "@dadi/logger": "^1.4.1",
-    "@octokit/app": "^4.1.0",
-    "@octokit/request": "^5.3.1",
-    "@octokit/rest": "^16.35.0",
+    "@dadi/logger": "^1.4.3",
+    "@google-cloud/functions-framework": "^3.1.2",
+    "@octokit/app": "^4.3.0",
+    "@octokit/request": "^5.6.3",
+    "@octokit/rest": "^16.43.2",
     "akismet": "^1.0.0",
-    "body-parser": "^1.17.x",
+    "body-parser": "^1.20.0",
     "bunyan-slack": "0.0.10",
-    "convict": "^4.3.0",
-    "express": "^4.14.0",
+    "convict": "^4.4.1",
+    "express": "^4.18.1",
     "express-brute": "^0.6.0",
-    "express-recaptcha": "^2.1.0",
-    "gitlab": "^3.5.1",
-    "js-yaml": "^3.10.0",
-    "jsonwebtoken": "^8.4.0",
+    "express-recaptcha": "^2.3.0",
+    "gitlab": "^3.11.4",
+    "http-proxy": "^1.18.1",
+    "js-yaml": "^3.14.1",
+    "jsonwebtoken": "^8.5.1",
     "mailgun-js": "^0.22.0",
-    "markdown-table": "^1.0.0",
-    "md5": "^2.1.0",
-    "moment": "^2.18.1",
-    "nanoid": "^3.1.20",
+    "markdown-table": "^1.1.3",
+    "md5": "^2.3.0",
+    "moment": "^2.29.4",
+    "nanoid": "^3.3.4",
     "nanoid-good": "^3.1.0",
     "node-rsa": "^0.4.2",
     "nodemon": "^1.19.4",
-    "nunjucks": "^3.2.2",
-    "object-path": "^0.11.1",
-    "request-promise": "^4.2.2",
+    "nunjucks": "^3.2.3",
+    "object-path": "^0.11.8",
+    "request-promise": "^4.2.6",
     "sha1": "^1.1.1",
-    "slug": "^0.9.3",
-    "universal-analytics": "^0.4.2",
-    "uuid": "^3.3.2"
+    "slug": "^0.9.4",
+    "universal-analytics": "^0.4.23",
+    "uuid": "^3.4.0"
   },
   "devDependencies": {
-    "front-matter": "^2.1.2",
-    "istanbul-cobertura-badger": "^1.3.0",
+    "front-matter": "^2.3.0",
+    "istanbul-cobertura-badger": "^1.3.1",
     "jest": "^23.6.0",
-    "lodash": "^4.17.15",
-    "nock": "^11.7.0",
-    "standard": "^10.0.2"
+    "lodash": "^4.17.21",
+    "nock": "^11.9.1",
+    "standard": "^10.0.3"
   },
   "jest": {
     "collectCoverage": true,
