@@ -172,8 +172,8 @@ const schema = {
   port: {
     doc: 'The port to bind the application to.',
     format: 'port',
-    default: 0,
-    env: 'PORT'
+    default: 42000,
+    env: 'STATICMAN_PORT'
   },
   rsaPrivateKey: {
     doc: 'RSA private key to encrypt sensitive configuration parameters with.',
