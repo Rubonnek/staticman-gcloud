@@ -8,7 +8,8 @@
     "start": "node index.js",
     "test": "standard && jest",
     "test-dev": "TEST_DEV=true jest --watch",
-    "debug": "nodemon --inspect index.js"
+    "debug": "nodemon --inspect index.js",
+    "test-gcloud": "pnpm exec functions-framework --target=main --signature-type=http"
   },
   "engines": {
     "node": ">=8.11.3"
